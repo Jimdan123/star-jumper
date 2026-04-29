@@ -201,19 +201,19 @@
       if (state !== 'playing') return;
 
       // Input
-      const spd = 4.2;
+      const spd = 2.8;
       if (keys['ArrowLeft'] || keys['KeyA'])       player.vx = -spd;
       else if (keys['ArrowRight'] || keys['KeyD']) player.vx =  spd;
-      else player.vx *= 0.78;
+      else player.vx *= 0.72;
 
       const wantJump = keys['ArrowUp'] || keys['Space'] || keys['KeyW'];
       if (wantJump && !keys['_jh'] && player.jumps < 1) {
-        player.vy = -13.5; player.jumps++; keys['_jh'] = true;
+        player.vy = -11.5; player.jumps++; keys['_jh'] = true;
         spawnParticles(player.x+player.w/2, player.y+player.h, '#6699ff', 7);
       }
       if (!wantJump) keys['_jh'] = false;
 
-      player.vy = Math.min(player.vy + 0.52, 15);
+      player.vy = Math.min(player.vy + 0.42, 12);
       player.onGround = false;
       player.x += player.vx;
       player.y += player.vy;
