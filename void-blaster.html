@@ -113,14 +113,15 @@ function makeAsteroidShape(r, sides) {
   return pts;
 }
 
-function makeAsteroid(size, x, y) {
+function makeAsteroid(size, x, y, speedMult = 1) {
   const r = ASTEROID_SIZES[size];
+  const baseSpd = size === 'large' ? 0.9 : size === 'medium' ? 1.3 : 1.8;
   return {
     x: x ?? rand(0, W), y: y ?? rand(0, H),
-    vx: rand(-1.2, 1.2) * (size === 'large' ? 1 : size === 'medium' ? 1.5 : 2.2),
-    vy: rand(-1.2, 1.2) * (size === 'large' ? 1 : size === 'medium' ? 1.5 : 2.2),
+    vx: rand(-baseSpd, baseSpd) * speedMult,
+    vy: rand(-baseSpd, baseSpd) * speedMult,
     angle: 0,
-    spin: rand(-0.025, 0.025),
+    spin: rand(-0.022, 0.022),
     size, r,
     pts: makeAsteroidShape(r, 8 + Math.floor(rand(0, 5))),
     color: size === 'large' ? '#6677aa' : size === 'medium' ? '#8899bb' : '#aabbcc',
@@ -128,15 +129,15 @@ function makeAsteroid(size, x, y) {
 }
 
 function spawnWave(waveNum) {
-  const count = 3 + waveNum;
+  const count = Math.min(2 + waveNum, 10);
+  const speedMult = 1 + (waveNum - 1) * 0.12;
   asteroids = [];
   for (let i = 0; i < count; i++) {
-    // spawn away from ship
     let x, y;
     do {
       x = rand(0, W); y = rand(0, H);
     } while (Math.hypot(x - ship.x, y - ship.y) < 140);
-    asteroids.push(makeAsteroid('large', x, y));
+    asteroids.push(makeAsteroid('large', x, y, speedMult));
   }
 }
 
@@ -175,14 +176,14 @@ function update() {
   if (state !== 'playing') return;
 
   // ship controls
-  const rotSpeed = 0.065;
+  const rotSpeed = 0.055;
   if (keys['ArrowLeft']  || keys['KeyA']) ship.angle -= rotSpeed;
   if (keys['ArrowRight'] || keys['KeyD']) ship.angle += rotSpeed;
 
   const thrusting = keys['ArrowUp'] || keys['KeyW'];
   if (thrusting) {
-    ship.vx += Math.cos(ship.angle) * 0.22;
-    ship.vy += Math.sin(ship.angle) * 0.22;
+    ship.vx += Math.cos(ship.angle) * 0.20;
+    ship.vy += Math.sin(ship.angle) * 0.20;
     // thruster particles
     if (Math.random() < 0.5) {
       const tx = ship.x - Math.cos(ship.angle)*14;
@@ -191,8 +192,10 @@ function update() {
     }
   }
 
-  // drag
-  ship.vx *= 0.985; ship.vy *= 0.985;
+  // drag + speed cap
+  ship.vx *= 0.982; ship.vy *= 0.982;
+  const spd = Math.hypot(ship.vx, ship.vy);
+  if (spd > 7) { ship.vx = ship.vx/spd*7; ship.vy = ship.vy/spd*7; }
   ship.x = wrap(ship.x + ship.vx, W);
   ship.y = wrap(ship.y + ship.vy, H);
 
@@ -212,7 +215,7 @@ function update() {
       vy: Math.sin(ship.angle)*12 + ship.vy,
       life: 1, age: 0,
     });
-    shootCooldown = 9;
+    shootCooldown = 7;
     sndShoot();
   }
 
@@ -222,7 +225,7 @@ function update() {
     b.x = wrap(b.x + b.vx, W);
     b.y = wrap(b.y + b.vy, H);
     b.age++;
-    if (b.age > 42) { bullets.splice(i,1); continue; }
+    if (b.age > 52) { bullets.splice(i,1); continue; }
 
     // bullet vs asteroid
     let hit = false;
@@ -265,23 +268,23 @@ function update() {
 }
 
 function splitAsteroid(a, idx) {
-  const nextSize = SIZES[SIZES.indexOf(a.size) + 1];
+  const waveMult = 1 + (wave - 1) * 0.12;
   if (a.size === 'large') {
     sndBigBoom();
     spawnParticles(a.x, a.y, '#8899cc', 16, 4, 5);
     spawnParticles(a.x, a.y, '#ffffff', 8,  6, 2);
     shake = 8;
     asteroids.splice(idx, 1);
-    asteroids.push(makeAsteroid('medium', a.x + rand(-20,20), a.y + rand(-20,20)));
-    asteroids.push(makeAsteroid('medium', a.x + rand(-20,20), a.y + rand(-20,20)));
+    asteroids.push(makeAsteroid('medium', a.x + rand(-20,20), a.y + rand(-20,20), waveMult));
+    asteroids.push(makeAsteroid('medium', a.x + rand(-20,20), a.y + rand(-20,20), waveMult));
   } else if (a.size === 'medium') {
     sndExplode();
     spawnParticles(a.x, a.y, '#aabbdd', 12, 3.5, 4);
     spawnParticles(a.x, a.y, '#ccddff', 6,  5, 2);
     shake = 5;
     asteroids.splice(idx, 1);
-    asteroids.push(makeAsteroid('small', a.x + rand(-10,10), a.y + rand(-10,10)));
-    asteroids.push(makeAsteroid('small', a.x + rand(-10,10), a.y + rand(-10,10)));
+    asteroids.push(makeAsteroid('small', a.x + rand(-10,10), a.y + rand(-10,10), waveMult));
+    asteroids.push(makeAsteroid('small', a.x + rand(-10,10), a.y + rand(-10,10), waveMult));
   } else {
     sndExplode();
     spawnParticles(a.x, a.y, '#ccddff', 8, 3, 3);
