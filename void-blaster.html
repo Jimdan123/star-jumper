@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Void Blaster</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #010108;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100vh;
+      font-family: 'Orbitron', monospace;
+      overflow: hidden;
+    }
+    #ui {
+      display: flex; gap: 36px; align-items: center;
+      margin-bottom: 10px; padding: 8px 28px;
+      background: rgba(5,10,30,0.85);
+      border: 1px solid rgba(100,180,255,0.2);
+      border-radius: 30px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 0 18px rgba(40,100,255,0.15);
+    }
+    .ui-item { color: #c0d8ff; font-size: 14px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(80,160,255,0.7); }
+    #score  { color: #4af; text-shadow: 0 0 10px rgba(40,180,255,0.9); }
+    #lives  { color: #f86; text-shadow: 0 0 10px rgba(255,100,60,0.9); }
+    #wave   { color: #af4; text-shadow: 0 0 10px rgba(120,255,60,0.9); }
+    #canvas-wrap {
+      border-radius: 4px;
+      box-shadow: 0 0 0 1px rgba(60,120,255,0.3), 0 0 40px rgba(30,70,200,0.3);
+    }
+    canvas { display: block; border-radius: 4px; }
+    #hint { color: rgba(80,110,180,0.7); margin-top: 10px; font-size: 11px; letter-spacing: 1.5px; }
+    #back { color: rgba(80,110,180,0.6); margin-top: 6px; font-size: 11px; letter-spacing: 1px; text-decoration: none; }
+    #back:hover { color: rgba(140,180,255,0.9); }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <span class="ui-item" id="score">⬡ 0</span>
+    <span class="ui-item" id="wave">WAVE 1</span>
+    <span class="ui-item" id="lives">▲ ▲ ▲</span>
+  </div>
+  <div id="canvas-wrap"><canvas id="game"></canvas></div>
+  <div id="hint">A/D or ←/→ Rotate &nbsp;·&nbsp; W or ↑ Thrust &nbsp;·&nbsp; Space Shoot &nbsp;·&nbsp; R Restart</div>
+  <a id="back" href="index.html">← Back to Arcade</a>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width  = 800;
+canvas.height = 500;
+
+const keys = {};
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ── audio ──────────────────────────────────────────────────────────────────
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+document.addEventListener('keydown', () => { if (AC.state === 'suspended') AC.resume(); }, { once: true });
+
+function playTone(freq, endFreq, type, dur, vol) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(AC.destination);
+  o.type = type;
+  o.frequency.setValueAtTime(freq, AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(endFreq, AC.currentTime + dur);
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur);
+}
+function sndShoot()   { playTone(900, 200, 'sawtooth', 0.12, 0.08); }
+function sndExplode() { playTone(160, 40, 'square', 0.35, 0.25); playTone(80, 20, 'sawtooth', 0.4, 0.15); }
+function sndBigBoom() { playTone(100, 20, 'square', 0.6, 0.4); playTone(55, 15, 'sawtooth', 0.7, 0.2); }
+function sndDie()     { playTone(440, 40, 'sawtooth', 0.7, 0.35); }
+function sndWave()    { [0,80,160].forEach(d => setTimeout(() => playTone(330+d*3, 880+d*3, 'sine', 0.2, 0.18), d)); }
+
+// ── constants ──────────────────────────────────────────────────────────────
+const W = canvas.width, H = canvas.height;
+const ASTEROID_SIZES = { large: 46, medium: 24, small: 12 };
+const ASTEROID_SCORES = { large: 20, medium: 50, small: 100 };
+const SIZES = ['large', 'medium', 'small'];
+
+// ── state ──────────────────────────────────────────────────────────────────
+let ship, bullets, asteroids, particles, state;
+let score, lives, wave, deathTimer, waveTimer, shake;
+let shootCooldown = 0;
+
+// ── helpers ────────────────────────────────────────────────────────────────
+function rand(a, b)  { return a + Math.random()*(b-a); }
+function wrap(v, max) { return ((v % max) + max) % max; }
+
+function spawnParticles(x, y, color, n, speed = 3, sz = 3) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = rand(speed*0.3, speed);
+    particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s,
+                     life: 1, color, sz: rand(sz*0.5, sz*1.5), glow: true });
+  }
+}
+
+function makeAsteroidShape(r, sides) {
+  const pts = [];
+  for (let i = 0; i < sides; i++) {
+    const a = (i / sides) * Math.PI * 2;
+    const d = r * rand(0.72, 1.28);
+    pts.push({ x: Math.cos(a)*d, y: Math.sin(a)*d });
+  }
+  return pts;
+}
+
+function makeAsteroid(size, x, y) {
+  const r = ASTEROID_SIZES[size];
+  return {
+    x: x ?? rand(0, W), y: y ?? rand(0, H),
+    vx: rand(-1.2, 1.2) * (size === 'large' ? 1 : size === 'medium' ? 1.5 : 2.2),
+    vy: rand(-1.2, 1.2) * (size === 'large' ? 1 : size === 'medium' ? 1.5 : 2.2),
+    angle: 0,
+    spin: rand(-0.025, 0.025),
+    size, r,
+    pts: makeAsteroidShape(r, 8 + Math.floor(rand(0, 5))),
+    color: size === 'large' ? '#6677aa' : size === 'medium' ? '#8899bb' : '#aabbcc',
+  };
+}
+
+function spawnWave(waveNum) {
+  const count = 3 + waveNum;
+  asteroids = [];
+  for (let i = 0; i < count; i++) {
+    // spawn away from ship
+    let x, y;
+    do {
+      x = rand(0, W); y = rand(0, H);
+    } while (Math.hypot(x - ship.x, y - ship.y) < 140);
+    asteroids.push(makeAsteroid('large', x, y));
+  }
+}
+
+// ── init ───────────────────────────────────────────────────────────────────
+function init() {
+  score = 0; lives = 3; wave = 1; state = 'playing'; shake = 0;
+  deathTimer = 0; waveTimer = 0;
+  particles = []; bullets = [];
+  ship = { x: W/2, y: H/2, angle: -Math.PI/2, vx: 0, vy: 0, inv: 180, trail: [] };
+  spawnWave(wave);
+  updateUI();
+}
+
+// ── update ─────────────────────────────────────────────────────────────────
+function update() {
+  if (shake > 0) shake -= 0.7;
+
+  if (state === 'waveTransition') {
+    waveTimer--;
+    tickParticles();
+    if (waveTimer <= 0) { state = 'playing'; spawnWave(wave); }
+    return;
+  }
+
+  if (state === 'respawning') {
+    deathTimer--;
+    tickParticles();
+    if (deathTimer <= 0) {
+      if (lives <= 0) { state = 'gameover'; return; }
+      ship = { x: W/2, y: H/2, angle: -Math.PI/2, vx: 0, vy: 0, inv: 180, trail: [] };
+      state = 'playing';
+    }
+    return;
+  }
+
+  if (state !== 'playing') return;
+
+  // ship controls
+  const rotSpeed = 0.065;
+  if (keys['ArrowLeft']  || keys['KeyA']) ship.angle -= rotSpeed;
+  if (keys['ArrowRight'] || keys['KeyD']) ship.angle += rotSpeed;
+
+  const thrusting = keys['ArrowUp'] || keys['KeyW'];
+  if (thrusting) {
+    ship.vx += Math.cos(ship.angle) * 0.22;
+    ship.vy += Math.sin(ship.angle) * 0.22;
+    // thruster particles
+    if (Math.random() < 0.5) {
+      const tx = ship.x - Math.cos(ship.angle)*14;
+      const ty = ship.y - Math.sin(ship.angle)*14;
+      spawnParticles(tx, ty, Math.random()<0.5?'#4488ff':'#88ccff', 1, 2, 2);
+    }
+  }
+
+  // drag
+  ship.vx *= 0.985; ship.vy *= 0.985;
+  ship.x = wrap(ship.x + ship.vx, W);
+  ship.y = wrap(ship.y + ship.vy, H);
+
+  if (ship.inv > 0) ship.inv--;
+
+  // trail
+  ship.trail.push({ x: ship.x, y: ship.y });
+  if (ship.trail.length > 12) ship.trail.shift();
+
+  // shoot
+  if (shootCooldown > 0) shootCooldown--;
+  if ((keys['Space'] || keys['KeyZ']) && shootCooldown <= 0) {
+    bullets.push({
+      x: ship.x + Math.cos(ship.angle)*16,
+      y: ship.y + Math.sin(ship.angle)*16,
+      vx: Math.cos(ship.angle)*12 + ship.vx,
+      vy: Math.sin(ship.angle)*12 + ship.vy,
+      life: 1, age: 0,
+    });
+    shootCooldown = 9;
+    sndShoot();
+  }
+
+  // bullets
+  for (let i = bullets.length-1; i >= 0; i--) {
+    const b = bullets[i];
+    b.x = wrap(b.x + b.vx, W);
+    b.y = wrap(b.y + b.vy, H);
+    b.age++;
+    if (b.age > 42) { bullets.splice(i,1); continue; }
+
+    // bullet vs asteroid
+    let hit = false;
+    for (let j = asteroids.length-1; j >= 0; j--) {
+      const a = asteroids[j];
+      if (Math.hypot(b.x-a.x, b.y-a.y) < a.r * 0.85) {
+        score += ASTEROID_SCORES[a.size];
+        splitAsteroid(a, j);
+        bullets.splice(i,1);
+        hit = true; break;
+      }
+    }
+    if (hit) continue;
+  }
+
+  // asteroids
+  for (const a of asteroids) {
+    a.x = wrap(a.x + a.vx, W);
+    a.y = wrap(a.y + a.vy, H);
+    a.angle += a.spin;
+
+    // asteroid vs ship
+    if (ship.inv <= 0 && Math.hypot(ship.x-a.x, ship.y-a.y) < a.r * 0.7 + 10) {
+      shipDie();
+      return;
+    }
+  }
+
+  if (asteroids.length === 0) {
+    wave++;
+    state = 'waveTransition';
+    waveTimer = 150;
+    sndWave();
+    spawnParticles(W/2, H/2, '#44ffcc', 20, 5, 4);
+    spawnParticles(W/2, H/2, '#ffffff', 12, 3, 2);
+  }
+
+  tickParticles();
+  updateUI();
+}
+
+function splitAsteroid(a, idx) {
+  const nextSize = SIZES[SIZES.indexOf(a.size) + 1];
+  if (a.size === 'large') {
+    sndBigBoom();
+    spawnParticles(a.x, a.y, '#8899cc', 16, 4, 5);
+    spawnParticles(a.x, a.y, '#ffffff', 8,  6, 2);
+    shake = 8;
+    asteroids.splice(idx, 1);
+    asteroids.push(makeAsteroid('medium', a.x + rand(-20,20), a.y + rand(-20,20)));
+    asteroids.push(makeAsteroid('medium', a.x + rand(-20,20), a.y + rand(-20,20)));
+  } else if (a.size === 'medium') {
+    sndExplode();
+    spawnParticles(a.x, a.y, '#aabbdd', 12, 3.5, 4);
+    spawnParticles(a.x, a.y, '#ccddff', 6,  5, 2);
+    shake = 5;
+    asteroids.splice(idx, 1);
+    asteroids.push(makeAsteroid('small', a.x + rand(-10,10), a.y + rand(-10,10)));
+    asteroids.push(makeAsteroid('small', a.x + rand(-10,10), a.y + rand(-10,10)));
+  } else {
+    sndExplode();
+    spawnParticles(a.x, a.y, '#ccddff', 8, 3, 3);
+    shake = 3;
+    asteroids.splice(idx, 1);
+  }
+}
+
+function shipDie() {
+  spawnParticles(ship.x, ship.y, '#4488ff', 18, 5, 4);
+  spawnParticles(ship.x, ship.y, '#ffffff', 10, 7, 2);
+  spawnParticles(ship.x, ship.y, '#ff8844', 10, 4, 3);
+  sndDie();
+  shake = 16;
+  lives--;
+  state = 'respawning';
+  deathTimer = 100;
+  updateUI();
+}
+
+function tickParticles() {
+  for (let i = particles.length-1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.96; p.vy *= 0.96;
+    p.life -= 0.02;
+    if (p.life <= 0) particles.splice(i,1);
+  }
+}
+
+function updateUI() {
+  document.getElementById('score').textContent = `⬡ ${score}`;
+  document.getElementById('wave').textContent  = `WAVE ${wave}`;
+  document.getElementById('lives').textContent = '▲ '.repeat(Math.max(lives,0)).trim() || '☠';
+}
+
+// ── draw ───────────────────────────────────────────────────────────────────
+function draw() {
+  const sx = shake > 0 ? (Math.random()-0.5)*shake : 0;
+  const sy = shake > 0 ? (Math.random()-0.5)*shake : 0;
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  drawBg();
+  drawParticles();
+  for (const a of asteroids) drawAsteroid(a);
+  for (const b of bullets) drawBullet(b);
+  if (state === 'playing' || state === 'waveTransition') drawShip();
+
+  drawVignette();
+  drawWaveText();
+  drawOverlay();
+
+  ctx.restore();
+}
+
+function drawBg() {
+  ctx.fillStyle = '#010108';
+  ctx.fillRect(0, 0, W, H);
+
+  // nebula
+  const t = Date.now()/9000;
+  for (let i = 0; i < 3; i++) {
+    const nx = (Math.sin(i*2.1+t)*0.4+0.5)*W;
+    const ny = (Math.cos(i*1.9+t*0.6)*0.4+0.5)*H;
+    const ng = ctx.createRadialGradient(nx,ny,0,nx,ny,160+i*40);
+    ng.addColorStop(0,'rgba(20,50,120,0.06)');
+    ng.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle = ng; ctx.fillRect(0,0,W,H);
+  }
+
+  const r = n => { const x=Math.sin(n)*9999; return x-Math.floor(x); };
+  for (let i = 0; i < 130; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${0.15+r(i*2.3)*0.5})`;
+    ctx.fillRect(r(i*3.1)*W, r(i*7.3)*H*0.95, 1, 1);
+  }
+  for (let i = 0; i < 35; i++) {
+    const tw = 0.3 + Math.sin(Date.now()/1400+i*1.2)*0.4;
+    ctx.fillStyle = `rgba(180,210,255,${tw})`;
+    ctx.fillRect(r(i*5.7)*W, r(i*9.1)*H*0.9, 1.5, 1.5);
+  }
+}
+
+function drawAsteroid(a) {
+  ctx.save();
+  ctx.translate(a.x, a.y);
+  ctx.rotate(a.angle);
+
+  // outer glow
+  const glow = ctx.createRadialGradient(0,0,a.r*0.4,0,0,a.r*1.3);
+  glow.addColorStop(0,'rgba(100,130,200,0.08)');
+  glow.addColorStop(1,'rgba(100,130,200,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  for (let i = 0; i < a.pts.length; i++) {
+    i === 0 ? ctx.moveTo(a.pts[i].x*1.3, a.pts[i].y*1.3) : ctx.lineTo(a.pts[i].x*1.3, a.pts[i].y*1.3);
+  }
+  ctx.closePath(); ctx.fill();
+
+  // main shape gradient
+  const ag = ctx.createRadialGradient(-a.r*0.3,-a.r*0.3,0,0,0,a.r);
+  ag.addColorStop(0, a.size==='large'?'#8899bb':a.size==='medium'?'#99aacc':'#bbccdd');
+  ag.addColorStop(1, a.size==='large'?'#334466':a.size==='medium'?'#445577':'#667788');
+  ctx.fillStyle = ag;
+  ctx.beginPath();
+  for (let i = 0; i < a.pts.length; i++) {
+    i === 0 ? ctx.moveTo(a.pts[i].x, a.pts[i].y) : ctx.lineTo(a.pts[i].x, a.pts[i].y);
+  }
+  ctx.closePath(); ctx.fill();
+
+  // edge
+  ctx.strokeStyle = 'rgba(180,210,255,0.3)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // surface cracks / highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(a.pts[0].x*0.6, a.pts[0].y*0.6);
+  ctx.lineTo(a.pts[2].x*0.5, a.pts[2].y*0.5);
+  ctx.lineTo(a.pts[4]?.x*0.4||0, a.pts[4]?.y*0.4||0);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawBullet(b) {
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, b.life * 2);
+  ctx.shadowColor = '#88ddff'; ctx.shadowBlur = 12;
+  const g = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,5);
+  g.addColorStop(0,'rgba(180,240,255,1)');
+  g.addColorStop(1,'rgba(60,160,255,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(b.x,b.y,5,0,Math.PI*2); ctx.fill();
+
+  // bullet trail
+  ctx.globalAlpha = 0.3;
+  ctx.strokeStyle = '#44aaff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(b.x, b.y);
+  ctx.lineTo(b.x - b.vx*3, b.y - b.vy*3);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawShip() {
+  if (!ship) return;
+  if (ship.inv > 0 && Math.floor(Date.now()/70)%2===0) return;
+
+  // motion trail
+  for (let i = 0; i < ship.trail.length; i++) {
+    const t = ship.trail[i];
+    ctx.globalAlpha = (i/ship.trail.length)*0.15;
+    ctx.fillStyle = '#4488ff';
+    ctx.beginPath(); ctx.arc(t.x,t.y,4,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.save();
+  ctx.translate(ship.x, ship.y);
+  ctx.rotate(ship.angle);
+
+  // invincibility aura
+  if (ship.inv > 0) {
+    const invG = ctx.createRadialGradient(0,0,5,0,0,22);
+    invG.addColorStop(0,`rgba(100,180,255,${(ship.inv/180)*0.35})`);
+    invG.addColorStop(1,'rgba(100,180,255,0)');
+    ctx.fillStyle = invG;
+    ctx.beginPath(); ctx.arc(0,0,22,0,Math.PI*2); ctx.fill();
+  }
+
+  const thrusting = keys['ArrowUp'] || keys['KeyW'];
+  if (thrusting) {
+    // thruster flame
+    ctx.shadowColor='#4488ff'; ctx.shadowBlur=15;
+    const flameLen = 12 + Math.random()*8;
+    const fg = ctx.createLinearGradient(-14,0,-14-flameLen,0);
+    fg.addColorStop(0,'rgba(120,200,255,0.9)');
+    fg.addColorStop(0.5,'rgba(60,130,255,0.5)');
+    fg.addColorStop(1,'rgba(40,80,255,0)');
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.moveTo(-11,-4);
+    ctx.lineTo(-14-flameLen, 0);
+    ctx.lineTo(-11, 4);
+    ctx.closePath(); ctx.fill();
+    ctx.shadowBlur=0;
+  }
+
+  // ship body glow
+  ctx.shadowColor='#88ccff'; ctx.shadowBlur=12;
+
+  // ship shape — sleek triangle
+  ctx.fillStyle='#c8dcf0';
+  ctx.beginPath();
+  ctx.moveTo(16,  0);   // nose
+  ctx.lineTo(-10, -9);  // left wing
+  ctx.lineTo(-5,  0);   // back center
+  ctx.lineTo(-10,  9);  // right wing
+  ctx.closePath(); ctx.fill();
+
+  // cockpit
+  const cg = ctx.createRadialGradient(4,-2,0,4,-2,7);
+  cg.addColorStop(0,'#88ddff'); cg.addColorStop(1,'#2266aa');
+  ctx.fillStyle = cg;
+  ctx.beginPath(); ctx.ellipse(4,-0,6,4,0,0,Math.PI*2); ctx.fill();
+
+  // wing detail
+  ctx.strokeStyle='rgba(200,230,255,0.5)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-10,-9); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-10, 9); ctx.stroke();
+
+  ctx.shadowBlur=0;
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    if (p.glow) { ctx.shadowColor=p.color; ctx.shadowBlur=8; }
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.sz*p.life,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawVignette() {
+  const vg = ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.9);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,0,8,0.6)');
+  ctx.fillStyle = vg; ctx.fillRect(0,0,W,H);
+}
+
+function drawWaveText() {
+  if (state !== 'waveTransition') return;
+  const alpha = Math.min(1, waveTimer/40) * Math.min(1, waveTimer/60);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle='rgba(0,0,12,0.6)';
+  ctx.fillRect(0, H/2-40, W, 80);
+  ctx.textAlign='center';
+  ctx.fillStyle='#88ddff'; ctx.font='bold 14px Orbitron,monospace';
+  ctx.fillText('WAVE CLEARED', W/2, H/2-12);
+  ctx.fillStyle='#ffffff'; ctx.font='bold 28px Orbitron,monospace';
+  ctx.shadowColor='#44aaff'; ctx.shadowBlur=16;
+  ctx.fillText(`WAVE ${wave}`, W/2, H/2+18);
+  ctx.restore();
+}
+
+function drawOverlay() {
+  if (state !== 'gameover' && state !== 'win') return;
+  ctx.fillStyle='rgba(0,0,12,0.82)'; ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+  ctx.shadowColor='#4488ff'; ctx.shadowBlur=30;
+  ctx.fillStyle='#88ccff'; ctx.font='bold 52px Orbitron,monospace';
+  ctx.fillText('GAME OVER', W/2, H/2-40);
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#ffffff'; ctx.font='22px Orbitron,monospace';
+  ctx.fillText(`Score: ${score}`, W/2, H/2+20);
+  ctx.fillStyle='#aabbcc'; ctx.font='13px Orbitron,monospace';
+  ctx.fillText(`Wave: ${wave}   ·   Press R to retry`, W/2, H/2+60);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'KeyR' && (state==='gameover' || state==='win')) init();
+});
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+init(); loop();
+</script>
+</body>
+</html>
