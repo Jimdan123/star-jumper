@@ -1,0 +1,14 @@
+{
+  "name": "star-jumper-agents",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Multi-agent AI system for Star Jumper game development",
+  "scripts": {
+    "agents": "node agents/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.51.0",
+    "@google/generative-ai": "^0.24.1",
+    "openai": "^6.35.0"
+  }
+}
