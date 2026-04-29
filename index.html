@@ -43,11 +43,11 @@
     }
     .games {
       display: grid;
-      grid-template-columns: repeat(2, 280px);
-      gap: 22px;
+      grid-template-columns: repeat(3, 260px);
+      gap: 20px;
     }
     .card {
-      width: 280px;
+      width: 260px;
       background: rgba(5,10,30,0.75);
       border: 1px solid rgba(80,130,255,0.2);
       border-radius: 16px;
@@ -78,6 +78,7 @@
     .badge-shooter    { background: rgba(30,150,100,0.3);  color: #44ffcc; border: 1px solid rgba(40,200,130,0.3); }
     .badge-breakout   { background: rgba(140,30,220,0.3);  color: #dd88ff; border: 1px solid rgba(160,50,255,0.3); }
     .badge-defense    { background: rgba(0,150,160,0.3);   color: #00ffcc; border: 1px solid rgba(0,200,200,0.3); }
+    .badge-survival   { background: rgba(0,60,140,0.35);  color: #00ddff; border: 1px solid rgba(0,120,220,0.35); }
     .card-title {
       font-size: 19px; font-weight: 700;
       letter-spacing: 2px; margin-bottom: 8px;
@@ -86,6 +87,7 @@
     .card-title-vb  { color: #44ffcc; }
     .card-title-ec  { color: #dd88ff; }
     .card-title-ra  { color: #00ffcc; }
+    .card-title-ab  { color: #00ddff; }
     .card-desc {
       font-size: 10px; letter-spacing: 1px; line-height: 1.7;
       color: rgba(160,190,230,0.65);
@@ -101,6 +103,7 @@
     .play-vb { background: rgba(30,150,100,0.35); color: #44ffcc; border: 1px solid rgba(40,200,130,0.4); }
     .play-ec { background: rgba(140,30,220,0.35); color: #dd88ff; border: 1px solid rgba(160,50,255,0.4); }
     .play-ra { background: rgba(0,150,160,0.35);  color: #00ffcc; border: 1px solid rgba(0,200,200,0.4); }
+    .play-ab { background: rgba(0,60,140,0.4);   color: #00ddff; border: 1px solid rgba(0,120,220,0.45); }
     .card:hover .card-play { filter: brightness(1.25); }
     .footer {
       color: rgba(80,110,180,0.5);
@@ -161,7 +164,7 @@
       <!-- Radiant -->
       <a class="card" href="radiant.html">
         <div class="card-preview">
-          <canvas id="preview-ra" width="280" height="150"></canvas>
+          <canvas id="preview-ra" width="260" height="150"></canvas>
         </div>
         <div class="card-body">
           <span class="card-badge badge-defense">DEFENSE</span>
@@ -170,9 +173,22 @@
           <span class="card-play play-ra">▶ &nbsp;PLAY</span>
         </div>
       </a>
+
+      <!-- Abyss -->
+      <a class="card" href="survival.html">
+        <div class="card-preview">
+          <canvas id="preview-ab" width="260" height="150"></canvas>
+        </div>
+        <div class="card-body">
+          <span class="card-badge badge-survival">3D SURVIVAL</span>
+          <div class="card-title card-title-ab">ABYSS</div>
+          <p class="card-desc">Stranded at 11,000m depth. Collect 5 power<br>cores and escape before the dark wins.</p>
+          <span class="card-play play-ab">▶ &nbsp;PLAY</span>
+        </div>
+      </a>
     </div>
 
-    <p class="footer">4 GAMES &nbsp;·&nbsp; KEYBOARD CONTROLS &nbsp;·&nbsp; NO ADS</p>
+    <p class="footer">5 GAMES &nbsp;·&nbsp; KEYBOARD CONTROLS &nbsp;·&nbsp; NO ADS</p>
   </div>
 
 <script>
@@ -371,6 +387,41 @@ window.addEventListener('resize',()=>{bgCanvas.width=window.innerWidth;bgCanvas.
     requestAnimationFrame(drawPreviewRA);
   }
   drawPreviewRA();
+})();
+
+// ── Abyss preview ────────────────────────────────────────────────────────────
+(function() {
+  const c=document.getElementById('preview-ab'), cx=c.getContext('2d'), W=c.width, H=c.height;
+  const particles=Array.from({length:40},(_,i)=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.2,vy:-.08-.1*Math.random(),r:Math.random()*1.5+.4,b:Math.random()}));
+  const creatures=[{x:30,y:60,vx:.7,vy:.15,t:0},{x:200,y:90,vx:-.5,vy:.1,t:1.5}];
+  const pickups=[{x:80,y:95,col:'#00ccff'},{x:155,y:55,col:'#00ff88'},{x:220,y:108,col:'#00ccff'}];
+  function drawPreviewAB(){
+    const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#000912');g.addColorStop(1,'#000d20');
+    cx.fillStyle=g;cx.fillRect(0,0,W,H);
+    // underwater light shafts
+    for(let i=0;i<3;i++){const sx=60+i*70;const sg=cx.createLinearGradient(sx,0,sx+18,H);sg.addColorStop(0,'rgba(0,80,160,0.07)');sg.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=sg;cx.beginPath();cx.moveTo(sx,0);cx.lineTo(sx+18,H);cx.lineTo(sx+30,H);cx.lineTo(sx+12,0);cx.closePath();cx.fill();}
+    // floor rocks
+    cx.fillStyle='#000d1a';cx.fillRect(0,H-22,W,22);
+    [[10,H-22,35,18],[60,H-20,25,14],[110,H-24,40,20],[175,H-18,28,12],[215,H-22,38,16]].forEach(([x,y,w,h])=>{cx.fillStyle='#000e1c';cx.beginPath();cx.roundRect(x,y,w,h,4);cx.fill();});
+    // vent bubbles
+    particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.y<-2){p.y=H-25;p.x=40+Math.random()*180;}cx.beginPath();cx.arc(p.x,p.y,p.r,0,Math.PI*2);cx.fillStyle=`rgba(100,220,200,${0.25*p.b})`;cx.fill();});
+    // vent glow
+    [[45,H-20],[195,H-20]].forEach(([vx,vy])=>{const vg=cx.createRadialGradient(vx,vy,0,vx,vy,20);vg.addColorStop(0,'rgba(0,255,136,0.18)');vg.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=vg;cx.beginPath();cx.arc(vx,vy,20,0,Math.PI*2);cx.fill();});
+    // pickups float
+    const t=Date.now()/900;
+    pickups.forEach((p,i)=>{const py=p.y+Math.sin(t+i*1.2)*4;const pg=cx.createRadialGradient(p.x,py,0,p.x,py,8);pg.addColorStop(0,p.col+'cc');pg.addColorStop(1,p.col+'00');cx.fillStyle=pg;cx.beginPath();cx.arc(p.x,py,8,0,Math.PI*2);cx.fill();cx.shadowColor=p.col;cx.shadowBlur=8;cx.fillStyle=p.col;cx.beginPath();cx.arc(p.x,py,3,0,Math.PI*2);cx.fill();cx.shadowBlur=0;});
+    // creatures (lurkers)
+    creatures.forEach(cr=>{cr.t+=0.018;cr.x+=cr.vx;cr.y+=Math.sin(cr.t)*0.4;if(cr.x>W+30)cr.x=-30;if(cr.x<-30)cr.x=W+30;cx.save();cx.translate(cr.x,cr.y);if(cr.vx<0)cx.scale(-1,1);cx.fillStyle='#1a0033';cx.beginPath();cx.ellipse(0,0,18,5,0,0,Math.PI*2);cx.fill();cx.fillStyle='rgba(255,0,50,0.7)';cx.shadowColor='#ff0033';cx.shadowBlur=4;cx.beginPath();cx.arc(-14,0,2,0,Math.PI*2);cx.fill();cx.shadowBlur=0;cx.restore();});
+    // flashlight cone from "player"
+    const px2=W/2, py2=H/2-8;
+    const fa=Math.sin(Date.now()*0.0007)*0.4;
+    const fx=px2+Math.cos(fa)*80,fy=py2+Math.sin(fa)*80;
+    const fl=cx.createRadialGradient(px2,py2,2,px2,py2,80);fl.addColorStop(0,'rgba(140,200,255,0.12)');fl.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=fl;cx.beginPath();const hw=0.35;cx.moveTo(px2,py2);cx.arc(px2,py2,80,fa-hw,fa+hw);cx.closePath();cx.fill();
+    // player dot
+    const pdg=cx.createRadialGradient(px2,py2,0,px2,py2,9);pdg.addColorStop(0,'rgba(150,220,255,0.9)');pdg.addColorStop(1,'rgba(0,100,200,0)');cx.fillStyle=pdg;cx.beginPath();cx.arc(px2,py2,9,0,Math.PI*2);cx.fill();cx.fillStyle='#aaddff';cx.beginPath();cx.arc(px2,py2,3.5,0,Math.PI*2);cx.fill();
+    requestAnimationFrame(drawPreviewAB);
+  }
+  drawPreviewAB();
 })();
 </script>
 </body>

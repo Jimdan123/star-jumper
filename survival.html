@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABYSS — Trench Survival</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden}
+#c{display:block;width:100vw;height:100vh;cursor:crosshair}
+
+#overlay{
+  position:fixed;inset:0;z-index:30;
+  background:radial-gradient(ellipse at center,#000d1a 0%,#000 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'Orbitron',monospace;color:#00ddff;text-align:center;padding:40px;
+}
+#overlay h1{
+  font-size:clamp(44px,9vw,88px);font-weight:900;letter-spacing:14px;
+  text-shadow:0 0 40px #00ddff,0 0 80px #0055aa;margin-bottom:6px;
+}
+.sub{font-size:13px;letter-spacing:8px;color:#005577;margin-bottom:36px;}
+.story{
+  max-width:520px;font-size:12px;line-height:2;color:#557788;
+  margin-bottom:28px;letter-spacing:1px;
+}
+.obj{font-size:11px;color:#00ffaa;letter-spacing:3px;margin-bottom:28px;}
+.ctrls{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px 32px;
+  font-size:11px;color:#334455;text-align:left;margin-bottom:36px;letter-spacing:1px;
+}
+.ctrls span{color:#0099bb;}
+#startBtn{
+  background:none;border:2px solid #00ddff;color:#00ddff;
+  padding:14px 52px;font-family:'Orbitron',monospace;font-size:14px;
+  letter-spacing:5px;cursor:pointer;
+  text-shadow:0 0 10px #00ddff;box-shadow:0 0 24px rgba(0,221,255,0.25);
+  transition:all 0.3s;
+}
+#startBtn:hover{background:rgba(0,221,255,0.08);box-shadow:0 0 48px rgba(0,221,255,0.5);}
+
+#hud{position:fixed;inset:0;z-index:10;pointer-events:none;display:none;font-family:'Orbitron',monospace;}
+
+#powerBar{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:280px;text-align:center;}
+#powerLabel{font-size:9px;letter-spacing:4px;color:#0088aa;margin-bottom:5px;}
+#powerTrack{width:100%;height:7px;background:rgba(0,30,50,0.7);border:1px solid #003344;border-radius:4px;overflow:hidden;}
+#powerFill{height:100%;width:100%;border-radius:4px;transition:width 0.15s,background 0.5s;}
+
+#healthBar{position:absolute;bottom:28px;left:28px;width:170px;}
+#healthLabel{font-size:9px;letter-spacing:3px;color:#ff3355;margin-bottom:5px;}
+#healthTrack{width:100%;height:6px;background:rgba(40,0,15,0.7);border:1px solid #330011;border-radius:3px;overflow:hidden;}
+#healthFill{height:100%;background:linear-gradient(90deg,#cc1133,#ff4466);border-radius:3px;transition:width 0.2s;}
+
+#depthDisplay{position:absolute;bottom:28px;right:28px;font-size:11px;letter-spacing:2px;color:#006688;text-align:right;}
+#depthVal{font-size:26px;color:#00aacc;font-weight:700;letter-spacing:0;}
+
+#coresDisplay{position:absolute;top:18px;right:28px;font-size:10px;letter-spacing:2px;color:#006688;text-align:right;}
+#coreIcons{margin-top:5px;}
+.ci{display:inline-block;width:11px;height:11px;border:1px solid #004466;margin:0 2px;border-radius:2px;transition:all 0.3s;}
+.ci.on{background:#00ccff;box-shadow:0 0 8px #00ccff;border-color:#00ccff;}
+
+#flashDisplay{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:4px;color:#003344;}
+#flashDisplay.lit{color:#00aacc;text-shadow:0 0 8px #00aacc;}
+
+#msg{
+  position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);
+  font-size:12px;letter-spacing:4px;color:#00ffcc;text-shadow:0 0 16px #00ffcc;
+  text-align:center;opacity:0;transition:opacity 0.3s;max-width:420px;line-height:1.8;
+}
+#iPrompt{
+  position:absolute;bottom:110px;left:50%;transform:translateX(-50%);
+  font-size:10px;letter-spacing:4px;color:#00ffaa;text-shadow:0 0 10px #00ffaa;
+  opacity:0;transition:opacity 0.3s;
+}
+
+#xhair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:18px;height:18px;}
+#xhair::before,#xhair::after{content:'';position:absolute;background:rgba(0,200,255,0.55);border-radius:1px;}
+#xhair::before{width:2px;height:100%;left:50%;transform:translateX(-50%);}
+#xhair::after{width:100%;height:2px;top:50%;transform:translateY(-50%);}
+
+#lockMsg{
+  position:fixed;bottom:70px;left:50%;transform:translateX(-50%);
+  z-index:15;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;
+  color:#002233;pointer-events:none;display:none;
+}
+#dmgFlash{position:fixed;inset:0;z-index:20;background:rgba(255,0,30,0.18);pointer-events:none;opacity:0;transition:opacity 0.15s;}
+#shdFlash{position:fixed;inset:0;z-index:20;background:rgba(255,200,0,0.12);pointer-events:none;opacity:0;transition:opacity 0.2s;}
+
+#endScreen{
+  position:fixed;inset:0;z-index:40;background:rgba(0,4,12,0.96);
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'Orbitron',monospace;color:#00ddff;text-align:center;
+}
+#endTitle{font-size:clamp(32px,6vw,58px);font-weight:900;letter-spacing:8px;margin-bottom:14px;}
+#endSub{font-size:12px;letter-spacing:3px;color:#006688;margin-bottom:40px;line-height:2;}
+#retryBtn{
+  background:none;border:2px solid #00ddff;color:#00ddff;
+  padding:12px 44px;font-family:'Orbitron',monospace;font-size:12px;
+  letter-spacing:4px;cursor:pointer;pointer-events:all;
+  text-shadow:0 0 10px #00ddff;transition:all 0.3s;
+}
+#retryBtn:hover{background:rgba(0,221,255,0.1);}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="overlay">
+  <h1>ABYSS</h1>
+  <div class="sub">TRENCH SURVIVAL</div>
+  <div class="story">
+    Your deep-sea drone has crashed at the bottom of the Mariana Trench.<br>
+    Emergency power is failing. Five power core fragments are scattered<br>
+    across the seafloor. Collect them all, return to your wreckage,<br>
+    and activate the rescue beacon — before the darkness takes you.
+  </div>
+  <div class="obj">[ COLLECT 5 CORES &nbsp;·&nbsp; RETURN TO WRECK &nbsp;·&nbsp; ACTIVATE BEACON ]</div>
+  <div class="ctrls">
+    <div><span>W A S D</span> — Swim</div>
+    <div><span>SPACE / SHIFT</span> — Rise / Dive</div>
+    <div><span>MOUSE</span> — Look around</div>
+    <div><span>F</span> — Toggle flashlight</div>
+    <div><span>E</span> — Collect / Activate</div>
+    <div><span>ESC</span> — Release cursor</div>
+  </div>
+  <button id="startBtn">DIVE IN</button>
+</div>
+
+<div id="hud">
+  <div id="powerBar">
+    <div id="powerLabel">EMERGENCY POWER</div>
+    <div id="powerTrack"><div id="powerFill"></div></div>
+  </div>
+  <div id="healthBar">
+    <div id="healthLabel">HULL INTEGRITY</div>
+    <div id="healthTrack"><div id="healthFill"></div></div>
+  </div>
+  <div id="depthDisplay">
+    <div>DEPTH</div>
+    <div><span id="depthVal">11200</span> <span style="font-size:11px">m</span></div>
+  </div>
+  <div id="coresDisplay">
+    <div>POWER CORES</div>
+    <div id="coreIcons"></div>
+  </div>
+  <div id="flashDisplay" class="lit">LIGHT: <span id="fState">ON</span></div>
+  <div id="msg"></div>
+  <div id="xhair"></div>
+  <div id="iPrompt">[ E ] INTERACT</div>
+</div>
+
+<div id="endScreen">
+  <div id="endTitle"></div>
+  <div id="endSub"></div>
+  <button id="retryBtn">RETRY DIVE</button>
+</div>
+
+<div id="lockMsg">CLICK TO LOCK CURSOR</div>
+<div id="dmgFlash"></div>
+<div id="shdFlash"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// ABYSS: TRENCH SURVIVAL
+// ═══════════════════════════════════════════════════════════════
+
+const POWER_DURATION = 180;   // seconds total
+const CELL_RESTORE   = 25;    // % power from a cell
+const SHIELD_DUR     = 8;     // seconds shield lasts
+const MOVE_SPD       = 7;
+const LURK_SPD       = 2.8;
+const PHANT_SPD      = 4.2;
+const LURK_RANGE_LIT = 26;    // lurker detect range when flashlight ON
+const LURK_RANGE_DRK = 10;    // lurker detect range when flashlight OFF
+const PHNT_RANGE_DRK = 14;    // phantom hunt range when flashlight OFF
+const PHNT_RANGE_LIT = 28;    // phantom flee range when flashlight ON
+const ATK_DIST       = 3.2;
+const ATK_DMG        = 9;
+const ATK_CD         = 1.6;   // seconds
+
+// ─── RENDERER ─────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000912);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x000912, 0.030);
+
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 140);
+camera.rotation.order = 'YXZ';
+
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+// ─── AUDIO ─────────────────────────────────────────────────────
+let actx;
+function initAudio() {
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  // Ambient underwater drone
+  const osc  = actx.createOscillator();
+  const gain = actx.createGain();
+  const filt = actx.createBiquadFilter();
+  osc.type = 'sine';
+  osc.frequency.value = 52;
+  gain.gain.value = 0.05;
+  filt.type = 'lowpass';
+  filt.frequency.value = 280;
+  osc.connect(filt); filt.connect(gain); gain.connect(actx.destination);
+  osc.start();
+  const lfo  = actx.createOscillator();
+  const lfog = actx.createGain();
+  lfo.frequency.value = 0.12;
+  lfog.gain.value = 7;
+  lfo.connect(lfog); lfog.connect(osc.frequency);
+  lfo.start();
+}
+
+function tone(freq, type, dur, vol, endFreq) {
+  if (!actx) return;
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = type; o.frequency.value = freq;
+  if (endFreq != null) o.frequency.linearRampToValueAtTime(endFreq, actx.currentTime + dur);
+  g.gain.setValueAtTime(vol, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
+  o.connect(g); g.connect(actx.destination);
+  o.start(); o.stop(actx.currentTime + dur);
+}
+const sfxCollect = () => tone(880, 'sine', 0.3, 0.2, 1320);
+const sfxAlert   = () => tone(120, 'sawtooth', 0.4, 0.15, 60);
+const sfxDamage  = () => tone(180, 'square', 0.25, 0.18, 70);
+const sfxBeacon  = () => {
+  tone(440,'sine',0.5,0.3,880);
+  setTimeout(()=>tone(880,'sine',0.5,0.3,1760),380);
+  setTimeout(()=>tone(1320,'sine',0.7,0.35,2640),760);
+};
+const sfxHeart = () => tone(70, 'sine', 0.18, 0.22);
+
+// ─── LIGHTING ─────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x001022, 0.55));
+const surfLight = new THREE.DirectionalLight(0x002844, 0.35);
+surfLight.position.set(0, 50, 0);
+scene.add(surfLight);
+
+// Bioluminescent scatter lights
+const bioLights = [];
+const BIO_COLORS = [0x003366, 0x005544, 0x1a0033, 0x004422, 0x002244];
+for (let i = 0; i < 10; i++) {
+  const pl = new THREE.PointLight(BIO_COLORS[i % 5], 0.4 + Math.random() * 0.5, 12 + Math.random() * 8);
+  pl.position.set((Math.random()-0.5)*160, 0.6+Math.random()*1.8, (Math.random()-0.5)*160);
+  scene.add(pl);
+  bioLights.push({ pl, base: pl.intensity, t: Math.random()*Math.PI*2 });
+}
+
+// Wreck indicator light (orange)
+const wreckLight = new THREE.PointLight(0xff5500, 1.4, 18);
+wreckLight.position.set(0, 2.5, 0);
+scene.add(wreckLight);
+
+// Player flashlight
+const flashSpot = new THREE.SpotLight(0x88ccff, 3.5, 34, Math.PI/7.5, 0.55, 1.2);
+const flashTgt  = new THREE.Object3D();
+scene.add(flashTgt);
+flashSpot.target = flashTgt;
+scene.add(flashSpot);
+
+// ─── FLOOR ────────────────────────────────────────────────────
+(function buildFloor() {
+  const geo = new THREE.PlaneGeometry(210, 210, 64, 64);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const y = Math.sin(x*0.07)*Math.cos(z*0.055)*1.6
+            + Math.sin(x*0.16+1.1)*Math.cos(z*0.19+0.7)*0.7
+            + Math.sin(x*0.28+z*0.22)*0.35;
+    pos.setY(i, y);
+  }
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshLambertMaterial({ color:0x000f1e, emissive:0x00060e, emissiveIntensity:0.4 });
+  scene.add(new THREE.Mesh(geo, mat));
+})();
+
+// ─── ROCKS ────────────────────────────────────────────────────
+const ROCK_DATA = [
+  [-15,-20,5,8,4],[-28,15,7,5,6],[20,-30,4,6,5],[35,10,3,4,3],
+  [-40,-5,6,10,5],[12,25,5,7,4],[-22,40,4,5,6],[45,-20,8,6,7],
+  [-50,30,5,9,4],[30,-50,6,7,5],[-35,-40,7,8,6],[55,15,4,5,4],
+  [-10,-55,5,6,5],[60,-35,6,4,6],[-60,10,8,7,7],[15,60,4,5,3],
+  [-45,55,5,6,5],[70,25,3,8,3],[-70,-25,6,5,6],[25,-70,4,7,4],
+  [-55,-55,6,9,5],[55,55,5,7,6],[-75,40,4,6,4],[40,-75,7,5,6],
+];
+for (const [x,z,sx,sy,sz] of ROCK_DATA) {
+  const geo = Math.random()<0.5
+    ? new THREE.BoxGeometry(sx, sy, sz)
+    : new THREE.CylinderGeometry(sx*0.32, sx*0.48, sy, 7);
+  const mat = new THREE.MeshLambertMaterial({
+    color: new THREE.Color().setHSL(0.56, 0.28, 0.035+Math.random()*0.03),
+    emissive: 0x000408,
+  });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, sy*0.5-0.3, z);
+  m.rotation.y = Math.random()*Math.PI*2;
+  scene.add(m);
+}
+
+// ─── WRECKAGE ─────────────────────────────────────────────────
+(function buildWreck() {
+  const mat = new THREE.MeshLambertMaterial({ color:0x1a2633, emissive:0x060400, emissiveIntensity:0.6 });
+  const parts = [
+    [8,2,4,  0,1,0,  0],
+    [0.5,2,2, 0,2.5,0, 0],
+    [1.5,0.5,1, 5,0.3,1,  0.4],
+    [1.5,0.5,1, 3.5,0.3,-1, -0.3],
+    [2,0.4,0.8, 7,0.25,0.5, 0.8],
+  ];
+  for (const [sx,sy,sz, px,py,pz, ry] of parts) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz), mat);
+    m.position.set(px,py,pz); m.rotation.y=ry;
+    scene.add(m);
+  }
+  // beacon glow sphere
+  const gm = new THREE.Mesh(
+    new THREE.SphereGeometry(0.28, 8, 8),
+    new THREE.MeshBasicMaterial({ color:0xff6600 })
+  );
+  gm.position.set(0, 2.4, 0);
+  scene.add(gm);
+})();
+
+// ─── VENTS ────────────────────────────────────────────────────
+const VENT_POS = [[-25,10],[15,-35],[42,32]];
+const vents = VENT_POS.map(([x,z]) => {
+  const m = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.38, 0.65, 0.75, 8),
+    new THREE.MeshLambertMaterial({ color:0x112211, emissive:0x0a1a0a })
+  );
+  m.position.set(x, 0.38, z);
+  scene.add(m);
+  const pl = new THREE.PointLight(0x00ff88, 0.9, 9);
+  pl.position.set(x, 1.2, z);
+  scene.add(pl);
+  return { x, z, pl };
+});
+
+// ─── BUBBLES ──────────────────────────────────────────────────
+const BCOUNT = 210;
+const bPos = new Float32Array(BCOUNT * 3);
+const bVent = [];
+for (let i = 0; i < BCOUNT; i++) {
+  const v = vents[i % vents.length];
+  bPos[i*3]   = v.x + (Math.random()-0.5)*0.7;
+  bPos[i*3+1] = Math.random() * 18;
+  bPos[i*3+2] = v.z + (Math.random()-0.5)*0.7;
+  bVent.push(v);
+}
+const bGeo = new THREE.BufferGeometry();
+bGeo.setAttribute('position', new THREE.BufferAttribute(bPos, 3));
+scene.add(new THREE.Points(bGeo, new THREE.PointsMaterial({ color:0x66ffcc, size:0.13, transparent:true, opacity:0.45, sizeAttenuation:true })));
+
+// Ambient plankton particles
+const pPos = new Float32Array(600*3);
+for (let i = 0; i < 600; i++) {
+  pPos[i*3]   = (Math.random()-0.5)*170;
+  pPos[i*3+1] = Math.random()*28;
+  pPos[i*3+2] = (Math.random()-0.5)*170;
+}
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+scene.add(new THREE.Points(pGeo, new THREE.PointsMaterial({ color:0x002233, size:0.07, transparent:true, opacity:0.38, sizeAttenuation:true })));
+
+// ─── PICKUPS ──────────────────────────────────────────────────
+const CORE_POS   = [[-30,-26],[36,-42],[-52,22],[26,52],[-18,-62]];
+const CELL_POS   = [[-10,15],[22,-10],[-36,6],[16,37],[-26,-16],[46,-16],[-16,47],[32,21],[-46,-32],[12,-52],[56,12],[-56,-12],[6,56],[-6,-56],[42,46]];
+const SHIELD_POS = [[-22,32],[32,-32],[-42,-22],[22,42],[0,-42]];
+
+function mkPickup(x, z, type) {
+  const cfgs = {
+    core:   { geo: new THREE.IcosahedronGeometry(0.62, 0), color:0x001833, emissive:0x00ccff, lc:0x00aaff, li:0.7 },
+    cell:   { geo: new THREE.OctahedronGeometry(0.48, 0),  color:0x001a00, emissive:0x00ff88, lc:0x00ff88, li:0.55 },
+    shield: { geo: new THREE.TetrahedronGeometry(0.52, 0), color:0x1a1a00, emissive:0xffcc00, lc:0xffcc00, li:0.55 },
+  };
+  const c = cfgs[type];
+  const mat = new THREE.MeshLambertMaterial({ color:c.color, emissive:c.emissive, emissiveIntensity:0.85 });
+  const mesh = new THREE.Mesh(c.geo, mat);
+  const y = 1.25;
+  mesh.position.set(x, y, z);
+  scene.add(mesh);
+  const light = new THREE.PointLight(c.lc, c.li, 7);
+  light.position.set(x, y, z);
+  scene.add(light);
+  return { mesh, light, x, y, z, type, collected:false, t:Math.random()*Math.PI*2 };
+}
+
+const pickups = [];
+CORE_POS.forEach(([x,z])   => pickups.push(mkPickup(x, z, 'core')));
+CELL_POS.forEach(([x,z])   => pickups.push(mkPickup(x, z, 'cell')));
+SHIELD_POS.forEach(([x,z]) => pickups.push(mkPickup(x, z, 'shield')));
+
+// ─── LURKERS ──────────────────────────────────────────────────
+const LURK_STARTS = [[-42,-32],[42,32],[-32,42],[32,-42],[-62,0],[62,0],[0,-62],[0,62]];
+function mkLurker(x, z) {
+  const g = new THREE.Group();
+  const bm = new THREE.MeshLambertMaterial({ color:0x0d0018, emissive:0x1a0028 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.75, 3.8), bm);
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.95, 1.4), bm);
+  head.position.z = -2.4;
+  g.add(head);
+  const em = new THREE.MeshBasicMaterial({ color:0xff0033 });
+  const eg = new THREE.SphereGeometry(0.11, 6, 6);
+  const eL = new THREE.Mesh(eg, em); eL.position.set(-0.35,0.28,-3.05);
+  const eR = new THREE.Mesh(eg, em); eR.position.set( 0.35,0.28,-3.05);
+  g.add(eL, eR);
+  const eyeLight = new THREE.PointLight(0xff0033, 0, 5);
+  eyeLight.position.set(0, 0.28, -3.05);
+  g.add(eyeLight);
+  g.position.set(x, 1.15, z);
+  scene.add(g);
+  return { g, eyeLight, bm, x, z, y:1.15, vx:0, vz:0,
+    state:'patrol', pa:Math.random()*Math.PI*2, atkcd:0, type:'lurker' };
+}
+const lurkers = LURK_STARTS.map(([x,z]) => mkLurker(x, z));
+
+// ─── PHANTOMS ─────────────────────────────────────────────────
+const PHNT_STARTS = [[-22,-42],[22,42],[-52,-52],[52,52],[-16,32],[16,-32],[-66,22],[66,-22],[-36,66],[36,-66]];
+function mkPhantom(x, z) {
+  const mat = new THREE.MeshLambertMaterial({ color:0x001122, emissive:0x001e33, emissiveIntensity:0.6, transparent:true, opacity:0.5 });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.85, 8, 6), mat);
+  mesh.position.set(x, 1.6+Math.random()*3, z);
+  const tm = new THREE.MeshLambertMaterial({ color:0x000e1a, transparent:true, opacity:0.35 });
+  for (let i = 0; i < 6; i++) {
+    const a = (i/6)*Math.PI*2;
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.02,0.9+Math.random()*0.4,4), tm);
+    t.position.set(Math.cos(a)*0.55,-0.75,Math.sin(a)*0.55);
+    t.rotation.z = Math.cos(a)*0.25; t.rotation.x = Math.sin(a)*0.25;
+    mesh.add(t);
+  }
+  scene.add(mesh);
+  return { mesh, mat, x, y:mesh.position.y, z, vx:0, vz:0,
+    state:'patrol', pa:Math.random()*Math.PI*2, atkcd:0, type:'phantom' };
+}
+const phantoms = PHNT_STARTS.map(([x,z]) => mkPhantom(x, z));
+
+// ─── PLAYER ───────────────────────────────────────────────────
+const P = {
+  pos: new THREE.Vector3(0, 2, 9),
+  yaw: 0, pitch: 0,
+  health: 100, power: 100,
+  shield: false, shieldT: 0,
+  flashOn: true,
+  cores: 0,
+};
+
+// ─── INPUT ────────────────────────────────────────────────────
+const keys = {};
+let locked = false, gameOn = false;
+
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (!gameOn) return;
+  if (e.code === 'KeyF') {
+    P.flashOn = !P.flashOn;
+    flashSpot.intensity = P.flashOn ? 3.5 : 0;
+    updFlash();
+  }
+  if (e.code === 'KeyE') tryInteract();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+document.addEventListener('mousemove', e => {
+  if (!locked || !gameOn) return;
+  P.yaw   -= e.movementX * 0.0022;
+  P.pitch -= e.movementY * 0.0022;
+  P.pitch  = Math.max(-1.38, Math.min(1.38, P.pitch));
+});
+document.addEventListener('pointerlockchange', () => {
+  locked = !!document.pointerLockElement;
+  document.getElementById('lockMsg').style.display = (!locked && gameOn) ? 'block' : 'none';
+});
+document.addEventListener('click', () => {
+  if (gameOn && !locked) document.body.requestPointerLock();
+});
+
+// ─── INTERACTION ──────────────────────────────────────────────
+function tryInteract() {
+  for (const p of pickups) {
+    if (p.collected) continue;
+    if (Math.hypot(P.pos.x-p.x, P.pos.z-p.z) < 3.5) { collectItem(p); return; }
+  }
+  if (P.cores >= 5 && Math.hypot(P.pos.x, P.pos.z) < 8) activateBeacon();
+}
+
+function collectItem(p) {
+  p.collected = true;
+  scene.remove(p.mesh);
+  scene.remove(p.light);
+  sfxCollect();
+  if (p.type === 'core') {
+    P.cores++;
+    updCoreIcons();
+    showMsg(P.cores < 5
+      ? `CORE ${P.cores} / 5 RECOVERED`
+      : 'ALL CORES SECURED\nRETURN TO WRECKAGE');
+  } else if (p.type === 'cell') {
+    P.power = Math.min(100, P.power + CELL_RESTORE);
+    showMsg('+25% POWER RESTORED');
+  } else {
+    P.shield = true; P.shieldT = SHIELD_DUR;
+    const sf = document.getElementById('shdFlash');
+    sf.style.opacity = 0.7;
+    setTimeout(() => { sf.style.opacity = 0; }, 250);
+    showMsg('SHIELD NODE ACTIVE — 8s');
+  }
+}
+
+let beaconOn = false, beaconT = 0, beaconMsg = 8;
+const BEACON_CD = 8;
+
+function activateBeacon() {
+  if (beaconOn) return;
+  beaconOn = true; beaconT = BEACON_CD; beaconMsg = BEACON_CD;
+  sfxBeacon();
+  showMsg('RESCUE BEACON ACTIVE\nHOLD POSITION: 8s');
+  wreckLight.color.setHex(0x00ffff);
+  // All creatures converge
+  lurkers.forEach(l => { l.state='hunt'; l.eyeLight.intensity=2; });
+  phantoms.forEach(p => { p.state='hunt'; });
+}
+
+// ─── HUD HELPERS ──────────────────────────────────────────────
+let msgTO;
+function showMsg(text) {
+  const el = document.getElementById('msg');
+  el.innerHTML = text.replace(/\n/g,'<br>');
+  el.style.opacity = 1;
+  clearTimeout(msgTO);
+  msgTO = setTimeout(() => { el.style.opacity = 0; }, 3000);
+}
+function updHUD() {
+  const pf = document.getElementById('powerFill');
+  pf.style.width = P.power + '%';
+  pf.style.background = P.power > 25
+    ? 'linear-gradient(90deg,#0099bb,#00eeff)'
+    : 'linear-gradient(90deg,#cc2200,#ff5522)';
+  document.getElementById('healthFill').style.width = P.health + '%';
+  const depth = Math.round(Math.max(0, (30 - P.pos.y) * 400));
+  document.getElementById('depthVal').textContent = depth;
+}
+function updCoreIcons() {
+  const el = document.getElementById('coreIcons');
+  el.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const s = document.createElement('span');
+    s.className = 'ci' + (i < P.cores ? ' on' : '');
+    el.appendChild(s);
+  }
+}
+function updFlash() {
+  const el = document.getElementById('flashDisplay');
+  document.getElementById('fState').textContent = P.flashOn ? 'ON' : 'OFF';
+  el.className = P.flashOn ? 'lit' : '';
+}
+let iPvis = false;
+function updIPrompt() {
+  let show = false;
+  for (const p of pickups) {
+    if (!p.collected && Math.hypot(P.pos.x-p.x, P.pos.z-p.z) < 3.5) { show=true; break; }
+  }
+  if (!show && P.cores >= 5 && Math.hypot(P.pos.x, P.pos.z) < 8) show = true;
+  if (show !== iPvis) {
+    document.getElementById('iPrompt').style.opacity = show ? 1 : 0;
+    iPvis = show;
+  }
+}
+
+// ─── END GAME ─────────────────────────────────────────────────
+function endGame(win) {
+  gameOn = false;
+  document.exitPointerLock();
+  const es = document.getElementById('endScreen');
+  es.style.display = 'flex';
+  if (win) {
+    document.getElementById('endTitle').textContent = 'RESCUED';
+    document.getElementById('endTitle').style.color = '#00ffcc';
+    document.getElementById('endSub').innerHTML =
+      `CORES RECOVERED: ${P.cores} / 5<br>POWER REMAINING: ${Math.round(P.power)}%<br>HULL INTEGRITY: ${Math.round(P.health)}%`;
+    sfxBeacon();
+  } else {
+    document.getElementById('endTitle').textContent = 'SYSTEM FAILURE';
+    document.getElementById('endTitle').style.color = '#ff2244';
+    document.getElementById('endSub').innerHTML = P.health <= 0
+      ? 'HULL BREACH — CRUSHED BY THE DEEP'
+      : 'EMERGENCY POWER EXHAUSTED<br>LOST IN THE ABYSS';
+    tone(110, 'sawtooth', 1.8, 0.18, 38);
+  }
+}
+
+// ─── CREATURE AI ──────────────────────────────────────────────
+function updLurker(l, dt) {
+  const dx = P.pos.x - l.x, dz = P.pos.z - l.z;
+  const dist = Math.sqrt(dx*dx + dz*dz);
+  const range = P.flashOn ? LURK_RANGE_LIT : LURK_RANGE_DRK;
+
+  if (l.state === 'patrol') {
+    l.pa += 0.28 * dt;
+    l.vx = Math.cos(l.pa) * 0.7 * dt;
+    l.vz = Math.sin(l.pa) * 0.7 * dt;
+    if (dist < range) { l.state='hunt'; l.eyeLight.intensity=1.8; sfxAlert(); }
+  } else {
+    const spd = LURK_SPD * dt;
+    const ang = Math.atan2(dx, dz);
+    l.vx = Math.sin(ang) * spd;
+    l.vz = Math.cos(ang) * spd;
+    if (dist > range * 1.6 && !beaconOn) { l.state='patrol'; l.eyeLight.intensity=0; }
+    if (dist < ATK_DIST && l.atkcd <= 0) {
+      if (!P.shield) { P.health = Math.max(0, P.health - ATK_DMG); flashDmg(); sfxDamage(); }
+      l.atkcd = ATK_CD;
+    }
+  }
+  l.atkcd = Math.max(0, l.atkcd - dt);
+  l.x = Math.max(-88, Math.min(88, l.x + l.vx));
+  l.z = Math.max(-88, Math.min(88, l.z + l.vz));
+
+  if (Math.abs(l.vx)+Math.abs(l.vz) > 0.001) {
+    const ta = Math.atan2(l.vx, l.vz);
+    const ca = l.g.rotation.y;
+    const d  = ((ta-ca+Math.PI*3)%(Math.PI*2))-Math.PI;
+    l.g.rotation.y += d * Math.min(1, dt*5);
+  }
+  l.g.children[0].rotation.y = Math.sin(Date.now()*0.003)*0.25;
+  l.g.position.set(l.x, l.y, l.z);
+}
+
+function updPhantom(ph, dt) {
+  const dx = P.pos.x - ph.x, dz = P.pos.z - ph.z;
+  const dist = Math.sqrt(dx*dx + dz*dz);
+
+  ph.mat.opacity = P.flashOn ? 0.12 : 0.65;
+  ph.mat.emissiveIntensity = P.flashOn ? 0.2 : 0.8;
+
+  if (!beaconOn) {
+    if (P.flashOn && dist < PHNT_RANGE_LIT)  ph.state = 'flee';
+    else if (!P.flashOn && dist < PHNT_RANGE_DRK) ph.state = 'hunt';
+    else if (dist > PHNT_RANGE_LIT * 1.4)    ph.state = 'patrol';
+  }
+
+  if (ph.state === 'patrol') {
+    ph.pa += 0.22 * dt;
+    ph.vx = Math.cos(ph.pa) * 0.55 * dt;
+    ph.vz = Math.sin(ph.pa) * 0.55 * dt;
+  } else if (ph.state === 'hunt') {
+    const spd = PHANT_SPD * dt;
+    const ang = Math.atan2(dx, dz);
+    ph.vx = Math.sin(ang) * spd;
+    ph.vz = Math.cos(ang) * spd;
+    if (dist < ATK_DIST && ph.atkcd <= 0) {
+      if (!P.shield) { P.health = Math.max(0, P.health - ATK_DMG*0.55); flashDmg(); sfxDamage(); }
+      ph.atkcd = ATK_CD * 0.75;
+    }
+  } else {
+    const spd = PHANT_SPD * 0.75 * dt;
+    const ang = Math.atan2(dx, dz) + Math.PI;
+    ph.vx = Math.sin(ang) * spd;
+    ph.vz = Math.cos(ang) * spd;
+  }
+  ph.atkcd = Math.max(0, ph.atkcd - dt);
+  ph.x = Math.max(-88, Math.min(88, ph.x + ph.vx));
+  ph.z = Math.max(-88, Math.min(88, ph.z + ph.vz));
+  ph.y = Math.max(1.2, Math.min(8, ph.y + Math.sin(Date.now()*0.0012+ph.pa)*0.022));
+  ph.mesh.position.set(ph.x, ph.y, ph.z);
+  ph.mesh.rotation.y += dt * 0.55;
+}
+
+function flashDmg() {
+  const el = document.getElementById('dmgFlash');
+  el.style.opacity = 0.75;
+  setTimeout(() => { el.style.opacity = 0; }, 180);
+}
+
+// ─── SCENE UPDATES ────────────────────────────────────────────
+function updBubbles(dt) {
+  const pa = bGeo.attributes.position.array;
+  for (let i = 0; i < BCOUNT; i++) {
+    pa[i*3+1] += (0.85 + Math.random()*0.35) * dt;
+    pa[i*3]   += (Math.random()-0.5) * 0.04;
+    if (pa[i*3+1] > 24) {
+      const v = bVent[i];
+      pa[i*3]   = v.x + (Math.random()-0.5)*0.65;
+      pa[i*3+1] = 0.5;
+      pa[i*3+2] = v.z + (Math.random()-0.5)*0.65;
+    }
+  }
+  bGeo.attributes.position.needsUpdate = true;
+}
+
+function updPickups(dt) {
+  for (const p of pickups) {
+    if (p.collected) continue;
+    p.t += dt * 1.4;
+    p.mesh.position.y = p.y + Math.sin(p.t) * 0.22;
+    p.mesh.rotation.y += dt * 1.1;
+    p.light.position.y = p.mesh.position.y;
+  }
+}
+
+let wreckT = 0;
+function updScene(dt) {
+  wreckT += dt;
+  // Bio light pulse
+  for (const b of bioLights) {
+    b.t += dt * 0.85;
+    b.pl.intensity = b.base * (0.65 + Math.sin(b.t) * 0.35);
+  }
+  // Vent pulse + restore power when near
+  for (const v of vents) {
+    v.pl.intensity = 0.65 + Math.sin(Date.now()*0.0032) * 0.25;
+    if (Math.hypot(P.pos.x - v.x, P.pos.z - v.z) < 3.5) {
+      P.power = Math.min(100, P.power + 3.5 * dt);
+    }
+  }
+  // Wreck light
+  if (beaconOn) {
+    wreckLight.intensity = 3 + Math.sin(wreckT * 9) * 2.2;
+  } else {
+    wreckLight.intensity = 1.2 + Math.sin(wreckT * 0.55) * 0.35;
+  }
+}
+
+let heartT = 0;
+function updHeartbeat(dt) {
+  if (P.power < 20) {
+    heartT -= dt;
+    if (heartT <= 0) { sfxHeart(); heartT = 1.1; }
+  }
+}
+
+// ─── MAIN UPDATE ──────────────────────────────────────────────
+let lastT = 0;
+const tmpVec = new THREE.Vector3();
+const fwd    = new THREE.Vector3();
+
+function update(dt) {
+  // Movement
+  tmpVec.set(0, 0, 0);
+  if (keys['KeyW']) tmpVec.z = -1;
+  if (keys['KeyS']) tmpVec.z =  1;
+  if (keys['KeyA']) tmpVec.x = -1;
+  if (keys['KeyD']) tmpVec.x =  1;
+
+  const vy = (keys['Space'] ? 1 : 0) - (keys['ShiftLeft']||keys['ShiftRight'] ? 1 : 0);
+
+  if (tmpVec.x !== 0 || tmpVec.z !== 0) {
+    tmpVec.normalize();
+    fwd.set(tmpVec.x, 0, tmpVec.z).applyEuler(new THREE.Euler(0, P.yaw, 0));
+    P.pos.x += fwd.x * MOVE_SPD * dt;
+    P.pos.z += fwd.z * MOVE_SPD * dt;
+  }
+  P.pos.y += vy * MOVE_SPD * 0.65 * dt;
+  P.pos.y = Math.max(1.6, Math.min(30, P.pos.y));
+  P.pos.x = Math.max(-88, Math.min(88, P.pos.x));
+  P.pos.z = Math.max(-88, Math.min(88, P.pos.z));
+
+  // Camera
+  camera.position.copy(P.pos);
+  camera.rotation.y = P.yaw;
+  camera.rotation.x = P.pitch;
+
+  // Flashlight follows camera
+  if (P.flashOn) {
+    const dir = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
+    flashSpot.position.copy(P.pos);
+    flashTgt.position.copy(P.pos).add(dir.multiplyScalar(10));
+  }
+
+  // Power drain
+  P.power = Math.max(0, P.power - (100 / POWER_DURATION) * dt);
+
+  // Shield timer
+  if (P.shield) { P.shieldT -= dt; if (P.shieldT <= 0) P.shield = false; }
+
+  // Beacon countdown
+  if (beaconOn) {
+    beaconT -= dt;
+    const rem = Math.ceil(beaconT);
+    if (rem !== beaconMsg && rem > 0) { beaconMsg = rem; showMsg(`BEACON: RESCUE IN ${rem}s`); }
+    if (beaconT <= 0) { endGame(true); return; }
+  }
+
+  lurkers.forEach(l => updLurker(l, dt));
+  phantoms.forEach(p => updPhantom(p, dt));
+  updBubbles(dt);
+  updPickups(dt);
+  updScene(dt);
+  updHeartbeat(dt);
+  updHUD();
+  updIPrompt();
+
+  if (P.health <= 0 || P.power <= 0) { endGame(false); }
+}
+
+// ─── LOOP ─────────────────────────────────────────────────────
+function loop(t) {
+  requestAnimationFrame(loop);
+  const dt = gameOn ? Math.min((t - lastT) / 1000, 0.05) : 0;
+  lastT = t;
+  if (gameOn) update(dt);
+  renderer.render(scene, camera);
+}
+
+// ─── START ────────────────────────────────────────────────────
+document.getElementById('startBtn').addEventListener('click', () => {
+  initAudio();
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('hud').style.display = 'block';
+  document.getElementById('lockMsg').style.display = 'block';
+  updCoreIcons();
+  updFlash();
+  updHUD();
+  gameOn = true;
+  document.body.requestPointerLock();
+});
+
+document.getElementById('retryBtn').addEventListener('click', () => location.reload());
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
