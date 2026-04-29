@@ -56,7 +56,7 @@ const CX = W/2, CY = H/2;
 const ARENA_R   = 208;
 const PADDLE_ARC = 0.24;   // half-arc radians
 const PADDLE_SPD = 0.046;
-const BALL_SPD   = 5.4;
+const BALL_SPD   = 4.8;
 const ORB_R      = 11;
 
 const keys = {};
@@ -136,18 +136,18 @@ const LEVELS = [
   { name: 'VORTEX',
     bg: ['#030812','#07141f'],
     orbs: [
-      ...ring(6,  50, '#44ffcc', 3, 0.009),
-      ...ring(12, 110, '#44aaff', 2, -0.006),
-      ...ring(18, 165, '#6644ff', 1,  0.004),
+      ...ring(6,  50, '#44ffcc', 3, 0.006),
+      ...ring(12, 110, '#44aaff', 2, -0.004),
+      ...ring(18, 165, '#6644ff', 1,  0.003),
     ] },
   { name: 'ECLIPSE CORE',
     bg: ['#080004','#140008'],
     orbs: [
       { a0:0, dist:0, color:'#ffffff', hp:8, maxHp:8, spd:0, r:20, pts:200 },
-      ...ring(5,  38, '#ff4444', 4, 0.014),
-      ...ring(10, 88, '#ff8833', 3, -0.009),
-      ...ring(16, 148, '#ffcc44', 2,  0.006),
-      ...ring(5,  175, '#ff44aa', 1, -0.012),
+      ...ring(5,  38, '#ff4444', 4, 0.010),
+      ...ring(10, 88, '#ff8833', 3, -0.007),
+      ...ring(16, 148, '#ffcc44', 2,  0.005),
+      ...ring(5,  175, '#ff44aa', 1, -0.009),
     ] },
 ];
 

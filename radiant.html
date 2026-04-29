@@ -54,7 +54,7 @@ const ctx = canvas.getContext('2d');
 canvas.width = canvas.height = 700;
 const W = canvas.width, H = canvas.height, CX = W/2, CY = H/2;
 const ARENA_R = 310;
-const SAFE_R  = 30;
+const SAFE_R  = 26;
 
 const keys = {};
 document.addEventListener('keydown', e => {
@@ -113,7 +113,7 @@ function spawnParticles(x, y, color, n, spd, sz) {
 function spawnEnemy(type, angle) {
   const d = EDATA[type];
   if (!d) return;
-  const baseSpd = 0.62 + (wave - 1) * 0.055;
+  const baseSpd = 0.58 + (wave - 1) * 0.048;
   const spd = baseSpd * d.spdMult;
   const a = (angle !== undefined) ? angle : Math.random() * Math.PI * 2;
   enemies.push({
@@ -136,11 +136,11 @@ function buildWave(w) {
   const add = (type, n, stride = 18, offset = 0) => {
     for (let i = 0; i < n; i++) q.push({ type, delay: offset + i * stride });
   };
-  if      (w === 1) { add('drone', 5, 20); }
-  else if (w === 2) { add('drone', 4, 16); add('split', 2, 24, 70); }
-  else if (w === 3) { add('drone', 5, 14); add('split', 3, 20, 60); }
-  else if (w === 4) { add('drone', 4, 14); add('split', 3, 18, 50); add('gunner', 2, 30, 100); }
-  else if (w === 5) { add('drone', 5, 12); add('split', 3, 16, 50); add('gunner', 2, 25, 90); add('tank', 1, 0, 130); }
+  if      (w === 1) { add('drone', 6, 22); }
+  else if (w === 2) { add('drone', 5, 18); add('split', 2, 26, 80); }
+  else if (w === 3) { add('drone', 6, 15); add('split', 3, 22, 70); }
+  else if (w === 4) { add('drone', 5, 14); add('split', 3, 20, 55); add('gunner', 2, 32, 110); }
+  else if (w === 5) { add('drone', 6, 13); add('split', 3, 18, 55); add('gunner', 2, 28, 100); add('tank', 1, 0, 145); }
   else {
     const b = 3 + Math.floor(w / 2);
     add('drone', b, 12);
@@ -232,7 +232,7 @@ function update() {
     }
     let hit = false;
     for (let j = enemies.length - 1; j >= 0; j--) {
-      if (Math.hypot(b.x - enemies[j].x, b.y - enemies[j].y) < EDATA[enemies[j].type]?.r || 14) {
+      if (Math.hypot(b.x - enemies[j].x, b.y - enemies[j].y) < (EDATA[enemies[j].type]?.r ?? 14)) {
         hitEnemy(enemies[j], j);
         bullets.splice(i, 1); hit = true; break;
       }
@@ -341,7 +341,7 @@ function tickEBullets() {
     const b = eBullets[i];
     b.x += b.vx; b.y += b.vy; b.age++;
     if (b.age > 130) { eBullets.splice(i, 1); continue; }
-    if (invTimer <= 0 && Math.hypot(b.x - CX, b.y - CY) < 22) {
+    if (invTimer <= 0 && Math.hypot(b.x - CX, b.y - CY) < 18) {
       playerHit(); eBullets.splice(i, 1); continue;
     }
     if (Math.hypot(b.x - CX, b.y - CY) > ARENA_R + 20) eBullets.splice(i, 1);

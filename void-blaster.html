@@ -130,7 +130,7 @@ function makeAsteroid(size, x, y, speedMult = 1) {
 
 function spawnWave(waveNum) {
   const count = Math.min(2 + waveNum, 10);
-  const speedMult = 1 + (waveNum - 1) * 0.12;
+  const speedMult = 1 + (waveNum - 1) * 0.08;
   asteroids = [];
   for (let i = 0; i < count; i++) {
     let x, y;
@@ -176,14 +176,14 @@ function update() {
   if (state !== 'playing') return;
 
   // ship controls
-  const rotSpeed = 0.055;
+  const rotSpeed = 0.058;
   if (keys['ArrowLeft']  || keys['KeyA']) ship.angle -= rotSpeed;
   if (keys['ArrowRight'] || keys['KeyD']) ship.angle += rotSpeed;
 
   const thrusting = keys['ArrowUp'] || keys['KeyW'];
   if (thrusting) {
-    ship.vx += Math.cos(ship.angle) * 0.20;
-    ship.vy += Math.sin(ship.angle) * 0.20;
+    ship.vx += Math.cos(ship.angle) * 0.22;
+    ship.vy += Math.sin(ship.angle) * 0.22;
     // thruster particles
     if (Math.random() < 0.5) {
       const tx = ship.x - Math.cos(ship.angle)*14;
@@ -225,7 +225,7 @@ function update() {
     b.x = wrap(b.x + b.vx, W);
     b.y = wrap(b.y + b.vy, H);
     b.age++;
-    if (b.age > 52) { bullets.splice(i,1); continue; }
+    if (b.age > 68) { bullets.splice(i,1); continue; }
 
     // bullet vs asteroid
     let hit = false;

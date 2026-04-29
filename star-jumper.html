@@ -228,7 +228,7 @@
       enemies         = L.enemies.map(e => ({...e, w:28, h:28, vy:0}));
       exit            = { ...L.exit, w:42, h:52, open:false };
       player          = { x:L.start.x, y:L.start.y, w:24, h:32,
-                          vx:0, vy:0, onGround:false, jumps:0, inv:60, trail:[] };
+                          vx:0, vy:0, onGround:false, jumps:0, coyoteTime:0, inv:60, trail:[] };
       state = 'playing';
       levelNameTimer = 180;
     }
@@ -247,19 +247,21 @@
       }
       if (state !== 'playing') return;
 
-      const spd = 2.5;
+      const spd = 2.2;
       if (keys['ArrowLeft']  || keys['KeyA']) player.vx = -spd;
       else if (keys['ArrowRight'] || keys['KeyD']) player.vx =  spd;
-      else player.vx *= 0.75;
+      else player.vx *= 0.82;
 
       const wantJump = keys['ArrowUp'] || keys['Space'] || keys['KeyW'];
-      if (wantJump && !keys['_jh'] && player.jumps < 1) {
-        player.vy = -11.0; player.jumps++; keys['_jh'] = true;
+      // variable jump height: releasing key early cuts the arc short
+      if (!wantJump && player.vy < -3) player.vy = -3;
+      if (wantJump && !keys['_jh'] && player.jumps === 0 && player.coyoteTime > 0) {
+        player.vy = -11.0; player.jumps = 1; player.coyoteTime = 0; keys['_jh'] = true;
         spawnParticles(player.x+player.w/2, player.y+player.h, '#6699ff', 8, {rise:0, sz:2, speed:2});
       }
       if (!wantJump) keys['_jh'] = false;
 
-      player.vy = Math.min(player.vy + 0.42, 12);
+      player.vy = Math.min(player.vy + 0.52, 14);
       player.onGround = false;
       player.x += player.vx;
       player.y += player.vy;
@@ -270,7 +272,10 @@
       const allPlats = [...platforms, ...movingPlatforms];
       for (const p of allPlats) resolveVsPlat(player, p);
 
-      if (!player.onGround && player.jumps === 0) player.jumps = 1;
+      // coyote time: 8-frame grace window after walking off a ledge
+      if (player.onGround) { player.coyoteTime = 8; }
+      else if (player.coyoteTime > 0) { player.coyoteTime--; }
+      if (!player.onGround && player.coyoteTime === 0 && player.jumps === 0) player.jumps = 1;
       if (player.y > canvas.height+60) { die(); return; }
 
       for (const mp of movingPlatforms) {
@@ -300,7 +305,7 @@
             spawnParticles(e.x+e.w/2, e.y+e.h/2, '#ff3333', 16, {glow:true, sz:4, speed:4});
             spawnParticles(e.x+e.w/2, e.y+e.h/2, '#ff9922', 10, {glow:true, sz:2, speed:2});
             soundEnemyDie();
-            enemies.splice(i,1); player.vy = -10; score += 75;
+            enemies.splice(i,1); player.vy = -8.5; score += 75;
           } else { die(); return; }
         }
       }
