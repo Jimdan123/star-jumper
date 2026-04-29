@@ -56,6 +56,11 @@
       playTone(330, 40, 'square',   0.5, 0.15);
     }
 
+    function soundEnemyDie() {
+      playTone(380, 90, 'square', 0.18, 0.3);
+      setTimeout(() => playTone(180, 55, 'sine', 0.14, 0.2), 60);
+    }
+
     let score, lives, currentLevel, state, deathTimer, particles;
     let player, platforms, movingPlatforms, stars, enemies, exit;
 
@@ -96,7 +101,7 @@
           { x: 390, y: 140, w: 100, h: 18, c: '#224422' },
         ],
         moving: [
-          { x: 280, y: 430, w: 100, h: 18, c: '#336633', dx: 1.8, min: 230, max: 430 },
+          { x: 280, y: 430, w: 100, h: 18, c: '#336633', dx: 1.8, min: 180, max: 520 },
         ],
         stars: [
           {x:200,y:362},{x:360,y:297},{x:520,y:237},
@@ -128,6 +133,7 @@
         moving: [
           { x: 255, y: 255, w: 85, h: 18, c: '#772222', dx:  2.0, min: 200, max: 450 },
           { x: 100, y: 315, w: 85, h: 18, c: '#772222', dx: -1.5, min:  50, max: 275 },
+          { x: 110, y: 430, w: 85, h: 18, c: '#772222', dx:  2.2, min: 110, max: 605 },
         ],
         stars: [
           {x:205,y:375},{x:355,y:322},{x:505,y:272},
@@ -257,6 +263,7 @@
         if (player.inv <= 0 && hit(player, e)) {
           if (player.vy > 0 && player.y+player.h < e.y+e.h/2+10) {
             spawnParticles(e.x+e.w/2, e.y+e.h/2, '#ff4444', 14);
+            soundEnemyDie();
             enemies.splice(i, 1); player.vy = -9; score += 50;
           } else { die(); return; }
         }
