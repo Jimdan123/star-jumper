@@ -30,6 +30,32 @@
     document.addEventListener('keydown', e => { keys[e.code] = true; if (GAME_KEYS.has(e.code)) e.preventDefault(); });
     document.addEventListener('keyup', e => { keys[e.code] = false; });
 
+    // ─── audio ──────────────────────────────────────────────────────────────────
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    document.addEventListener('keydown', () => { if (audioCtx.state === 'suspended') audioCtx.resume(); }, { once: true });
+
+    function playTone(freq, endFreq, type, duration, vol) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(endFreq, audioCtx.currentTime + duration);
+      gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function soundStar() {
+      playTone(660, 1320, 'sine', 0.08, 0.25);
+      setTimeout(() => playTone(880, 1760, 'sine', 0.1, 0.18), 60);
+    }
+
+    function soundDie() {
+      playTone(440, 55, 'sawtooth', 0.6, 0.3);
+      playTone(330, 40, 'square',   0.5, 0.15);
+    }
+
     let score, lives, currentLevel, state, deathTimer, particles;
     let player, platforms, movingPlatforms, stars, enemies, exit;
 
@@ -239,7 +265,7 @@
       // Stars
       for (const s of stars) {
         if (!s.done && hit(player, {x:s.x-10,y:s.y-10,w:20,h:20})) {
-          s.done = true; score += 10;
+          s.done = true; score += 10; soundStar();
           spawnParticles(s.x, s.y, '#ffdd00', 10);
         }
       }
@@ -265,6 +291,7 @@
     function die() {
       lives--;
       spawnParticles(player.x+player.w/2, player.y+player.h/2, '#ff6644', 22);
+      soundDie();
       state = 'dead'; deathTimer = 90;
       updateUI();
     }
