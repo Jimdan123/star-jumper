@@ -1,145 +1,150 @@
-# ★ Star Jumper
+# SPACE ARCADE
 
-A space-themed browser platformer built with HTML5 Canvas and vanilla JavaScript.
+A collection of five browser games built with HTML5 Canvas and Three.js — no engine, no frameworks, just vanilla JavaScript.
 
-You play as a tiny astronaut stranded across hostile alien worlds. Collect every star on each level to unlock the escape portal — then fight your way through alien critters to reach it. Three lives, three worlds, one chance to make it home.
-
----
-
-## About the Game
-
-**Story:** Your ship crash-landed. The emergency beacon needs power crystals (stars) scattered across three planets. Collect them all, avoid the alien guardians, and jump through the escape portal to reach the next world.
-
-**Worlds:**
-| Level | Name | Theme | Difficulty |
-|-------|------|--------|------------|
-| 1 | Space Station Blues | Deep space, blue platforms | Easy — learn the ropes |
-| 2 | Jungle Moon | Green alien jungle, moving platforms | Medium — trickier jumps |
-| 3 | Lava Core | Red volcanic planet, fast enemies | Hard — precise movement required |
+**Live site → [jimdan123.github.io/star-jumper](https://jimdan123.github.io/star-jumper/)**
 
 ---
 
-## Controls
+## Games
 
-| Key | Action |
-|-----|--------|
-| `←` / `A` | Move left |
-| `→` / `D` | Move right |
-| `↑` / `W` / `Space` | Jump |
-| `R` | Restart (after win or game over) |
+### ★ Star Jumper — Platformer
+Run and jump across three alien worlds. Collect every star to unlock the exit portal, stomp enemies for points, and don't fall off. Three lives to clear all three levels.
 
-**Tips:**
-- Collect **all stars** on a level before the exit portal will open
-- **Jump on top of enemies** to stomp them (+50 points) — hitting them from the side kills you
-- Moving platforms (levels 2 & 3) can carry you further — use them
-- You have **3 lives** total across all levels
-- Stars are worth **10 points** each; stomping an enemy is worth **50 points**
+| Level | Name | Theme |
+|-------|------|-------|
+| 1 | Space Station Blues | Blue platforms, learn the ropes |
+| 2 | Jungle Moon | Moving platforms, alien jungle |
+| 3 | Lava Core | Fast enemies, volcanic terrain |
+
+**Controls:** `A` / `D` move, `W` / `Space` jump, `R` restart
+
+---
+
+### ◈ Void Blaster — Shooter
+Pilot a ship through endless asteroid waves. Thrust, rotate, and shoot to survive as long as possible. Enemies get faster each wave.
+
+**Controls:** `W` thrust, `A` / `D` rotate, `Space` shoot
+
+---
+
+### ◉ Eclipse — Breakout
+Circular arena breakout across five unique levels. Rotate your paddle to deflect the ball and shatter all orbital crystals. Power-ups spawn as you clear each ring.
+
+| Level | Name | Mechanic |
+|-------|------|----------|
+| 1 | CORONA | Single ring, learn the curve |
+| 2 | NEBULA | Two counter-rotating rings |
+| 3 | PULSAR | Triple rings, speed up |
+| 4 | VORTEX | Orbiting crystal clusters |
+| 5 | ECLIPSE CORE | Maximum density, final challenge |
+
+**Controls:** `A` / `D` rotate paddle, `Space` launch ball
+
+---
+
+### ◆ Radiant — Defense
+You are locked at the center of an arena. Enemies spiral in from all 360°. Rotate to face any direction and shoot them down before they reach you. Wave difficulty scales continuously.
+
+**Enemy types:** Drones, Splits, Frags, Gunners, Tanks
+
+**Controls:** `A` / `D` rotate, `Space` shoot
+
+---
+
+### ▼ ABYSS — 3D Survival
+First-person 3D survival game built with Three.js. Your deep-sea drone has crashed at the bottom of the Mariana Trench (11,000 m). Emergency power lasts 3 minutes.
+
+**Objective:** Collect 5 power core fragments scattered across the seafloor → return to the wreckage → press `E` to activate the rescue beacon → survive an 8-second countdown while every creature converges on you.
+
+**The flashlight mechanic:**
+- Flashlight **ON** — you can see, but Lurkers hunt by your light
+- Flashlight **OFF** — Lurkers lose interest, but Phantoms attack in the dark
+
+**Pickups:**
+- Cyan cores — collect all 5 to win
+- Green cells — restore +25% emergency power
+- Yellow nodes — 8-second damage shield
+
+**Controls:** `WASD` swim, `Space` / `Shift` rise / dive, `Mouse` look, `F` flashlight, `E` interact
 
 ---
 
 ## Running Locally
 
-### Requirements
-- [Node.js](https://nodejs.org/) v18 or higher
-- npm (comes with Node.js)
-
-### Steps
+The arcade hub and all games (except Star Jumper) are single HTML files — just open them in a browser.
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/star-jumper.git
+git clone https://github.com/Jimdan123/star-jumper.git
 cd star-jumper
 
-# 2. Install dependencies
-npm install
+# Open the hub
+open index.html
 
-# 3. Start the dev server
-npm run dev
+# Or serve locally (avoids any CORS issues with Three.js CDN)
+npx serve .
 ```
 
-Then open your browser at **http://localhost:5173** and play.
-
-### Other commands
+Star Jumper has its own dev build:
 
 ```bash
-npm run build    # Build for production → outputs to /dist
-npm run preview  # Preview the production build locally
+cd star-jumper
+npm install
+npm run dev       # http://localhost:5173
+npm run build     # production build → /dist
 ```
 
 ---
 
-## Deploying to GitHub Pages (Live Website)
+## Deployment
 
-This repo is set up to **auto-deploy** every time you push to `main`. Once configured, your game will be live at:
+Every push to `main` auto-deploys via GitHub Actions to GitHub Pages.
 
 ```
-https://YOUR_USERNAME.github.io/star-jumper/
+.github/workflows/deploy.yml
 ```
 
-### One-time setup
-
-1. **Create the repo on GitHub** (name it `star-jumper`)
-
-2. **Enable GitHub Pages** in your repo settings:
-   - Go to `Settings` → `Pages`
-   - Set **Source** to `Deploy from a branch`
-   - Set **Branch** to `gh-pages` / `/ (root)`
-   - Save
-
-3. **Push your code:**
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/star-jumper.git
-   git push -u origin main
-   ```
-
-4. GitHub Actions will automatically build and deploy. Check the **Actions** tab to watch it run (~1 minute). After that, your site is live!
-
-> **Note:** If you rename the repo, update `base` in `vite.config.js` to match:
-> ```js
-> base: '/your-repo-name/',
-> ```
+The workflow uploads the entire repo root as a Pages artifact — no Jekyll, no build step for the HTML games. Star Jumper's source lives in the `star-jumper/` subdirectory and is served as-is (the built output is committed).
 
 ---
 
 ## Project Structure
 
 ```
-star-jumper/
-├── index.html                  # Entry HTML
-├── vite.config.js              # Vite build config
-├── package.json
-├── .gitignore
+/
+├── index.html              # Arcade hub — animated game card gallery
+├── star-jumper.html        # Platformer (Canvas 2D)
+├── void-blaster.html       # Shooter (Canvas 2D)
+├── eclipse.html            # Breakout (Canvas 2D)
+├── radiant.html            # Defense (Canvas 2D)
+├── survival.html           # 3D survival (Three.js)
+├── .nojekyll               # Skips Jekyll processing on GitHub Pages
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml          # Auto-deploy to GitHub Pages
-└── src/
-    ├── main.js                 # Entry point — sets up canvas and game loop
-    ├── game.js                 # Game class — state, update, draw orchestration
-    ├── levels.js               # Level data (platforms, enemies, stars, portals)
-    ├── physics.js              # Collision detection and resolution
-    ├── particles.js            # Particle system (spawn, tick, draw)
-    ├── renderer.js             # All drawing functions
-    └── style.css               # Page styles
+│       └── deploy.yml      # Auto-deploy on push to main
+└── star-jumper/            # Star Jumper Vite source (legacy subfolder)
+    ├── src/
+    └── ...
 ```
 
 ---
 
 ## Tech Stack
 
-- **Vanilla JavaScript** (ES Modules)
-- **HTML5 Canvas API** — all game rendering
-- **Vite** — local dev server + production bundler
-- **GitHub Actions** — CI/CD for automatic deployment
-- **GitHub Pages** — free static site hosting
+| Thing | Used for |
+|-------|----------|
+| HTML5 Canvas API | All 2D games |
+| Three.js r128 | ABYSS 3D rendering |
+| Three.js UnrealBloomPass | Glow / bloom post-processing |
+| Web Audio API | Sound effects and ambient audio in all games |
+| Orbitron (Google Fonts) | UI typography across all games |
+| GitHub Actions | CI/CD auto-deploy |
+| GitHub Pages | Hosting |
 
-No game engine, no heavy frameworks — just the browser's built-in graphics API.
+No game engine. No build step for the HTML games. Everything runs directly in the browser.
 
 ---
 
 ## License
 
-MIT — do whatever you want with it.
+MIT
