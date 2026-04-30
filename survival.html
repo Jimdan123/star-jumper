@@ -361,7 +361,7 @@ for(let i=0;i<10;i++){
   const ms=2.5+Math.random()*2.5,sh=3+Math.random()*5;
   const col=new THREE.Color(MUSH_CLR[i%6]);
   const stalkPts=[new THREE.Vector3(0,0,0),new THREE.Vector3(.04*ms,sh*.25,0),new THREE.Vector3(.06*ms,sh*.6,0),new THREE.Vector3(0,sh,0)];
-  scene.add(Object.assign(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(stalkPts),10,.18*ms,8,false),new THREE.MeshStandardMaterial({color:0x001a10,roughness:.9,emissive:col.clone().multiplyScalar(.2),emissiveIntensity:.5})),{position:new THREE.Vector3(mx,0,mz)}));
+  const stalk=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(stalkPts),10,.18*ms,8,false),new THREE.MeshStandardMaterial({color:0x001a10,roughness:.9,emissive:col.clone().multiplyScalar(.2),emissiveIntensity:.5}));stalk.position.set(mx,0,mz);scene.add(stalk);
   const cap=new THREE.Mesh(mkCapGeo(ms*(1.3+Math.random()*.5)),new THREE.MeshStandardMaterial({color:0x000a06,roughness:.6,emissive:col,emissiveIntensity:1.5,side:THREE.DoubleSide}));
   cap.position.set(mx,sh,mz);scene.add(cap);
 }
@@ -499,9 +499,15 @@ function mkLurker(x,z,gltf){
     model.traverse(c=>{if(c.isMesh){c.material=mat;c.castShadow=false;}});
     normalizeModel(model,2.8);g.add(model);
     if(gltf.animations&&gltf.animations.length){mixer=new THREE.AnimationMixer(model);mixer.clipAction(gltf.animations[0]).play();}
-  }else{g.add(new THREE.Mesh(new THREE.CapsuleGeometry(.35,1.6,6,10),new THREE.MeshStandardMaterial({color:0x060012,roughness:.85,emissive:0x120018,emissiveIntensity:.7})));}
+  }else{
+    // CapsuleGeometry not in r128 — build from cylinder + two capped spheres
+    const bm=new THREE.MeshStandardMaterial({color:0x060012,roughness:.85,emissive:0x120018,emissiveIntensity:.7});
+    const cyl=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,1.2,10),bm);cyl.rotation.x=Math.PI/2;g.add(cyl);
+    const s1=new THREE.Mesh(new THREE.SphereGeometry(.35,10,6),bm);s1.position.z=.6;g.add(s1);
+    const s2=new THREE.Mesh(new THREE.SphereGeometry(.35,10,6),bm);s2.position.z=-.6;g.add(s2);
+  }
   const lureMat=new THREE.MeshStandardMaterial({color:0,emissive:0x00ffaa,emissiveIntensity:4.5});
-  g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(.13,8,8),lureMat),{position:new THREE.Vector3(0,.5,1.5)}));
+  const lureMesh=new THREE.Mesh(new THREE.SphereGeometry(.13,8,8),lureMat);lureMesh.position.set(0,.5,1.5);g.add(lureMesh);
   const eyeLight=new THREE.PointLight(0xff1100,0,5);eyeLight.position.set(0,.1,1.2);g.add(eyeLight);
   const sy=sampleTerrainY(x,z)+CREATURE_HOVER;
   g.position.set(x,sy,z);scene.add(g);
@@ -537,12 +543,12 @@ function mkCrusher(x,z){
   // body
   g.add(new THREE.Mesh(new THREE.BoxGeometry(3.2,.9,2.2),mat));
   // carapace dome
-  g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(1.4,.8,1,0,Math.PI*2,0,Math.PI*.5),mat),{position:new THREE.Vector3(0,.45,0),scale:new THREE.Vector3(1,.6,1)}));
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(1.4,8,6,0,Math.PI*2,0,Math.PI*.5),mat);dome.position.set(0,.45,0);dome.scale.set(1,.6,1);g.add(dome);
   // claws
   [-1.8,1.8].forEach(sx=>{
     const arm=new THREE.Group();
     arm.add(new THREE.Mesh(new THREE.BoxGeometry(.3,.25,1.6),mat));
-    arm.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(.6,.2,.4),mat),{position:new THREE.Vector3(0,0,.95)}));
+    const tip=new THREE.Mesh(new THREE.BoxGeometry(.6,.2,.4),mat);tip.position.set(0,0,.95);arm.add(tip);
     arm.position.set(sx,.1,.4);arm.rotation.y=sx>0?-.25:.25;g.add(arm);
   });
   // legs
