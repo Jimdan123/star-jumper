@@ -309,7 +309,7 @@ for(let i=0;i<10;i++){
   const col=b==='volcanic'?0x3a1008:b==='sandy'?0x0e1a22:0x0a1424;
   const emi=b==='volcanic'?0x280800:0x040d18;
   const m=new THREE.Mesh(mkRockGeo(r),new THREE.MeshLambertMaterial({color:col,emissive:emi}));
-  m.position.set(rx,r*.55-.2,rz);m.rotation.y=Math.random()*Math.PI*2;scene.add(m);
+  m.position.set(rx,terrainH(rx,rz)+r*.5,rz);m.rotation.y=Math.random()*Math.PI*2;scene.add(m);
 }
 
 // ─── ALIEN SPIRES — MeshBasicMaterial (emissive-only, no lighting calc) ──
@@ -420,7 +420,9 @@ function mkPickup(x,z,type){
   const gy=terrainH(x,z)+1.6;
   const mesh=new THREE.Mesh(c.geo,new THREE.MeshBasicMaterial({color:c.col,transparent:true,opacity:.95}));
   mesh.position.set(x,gy,z);scene.add(mesh);
-  const light=new THREE.PointLight(c.lc,c.li,7);light.position.set(x,gy,z);scene.add(light);
+  // Only core pickups get a PointLight — cell/shield are bright enough from bloom
+  const light=type==='core'?new THREE.PointLight(c.lc,c.li,7):null;
+  if(light){light.position.set(x,gy,z);scene.add(light);}
   return{mesh,light,x,y:gy,z,type,collected:false,t:Math.random()*Math.PI*2};
 }
 const pickups=[];
@@ -484,7 +486,7 @@ function mkLurker(x,z,gltf){
   // Red eyes
   const eyeMat=new THREE.MeshBasicMaterial({color:0xff1100});
   [-0.15,.15].forEach(ex=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.07,5,4),eyeMat);e.position.set(ex,.12,-1.1);g.add(e);});
-  const eyeLight=new THREE.PointLight(0xff1100,0,6);eyeLight.position.set(0,.12,1.2);g.add(eyeLight);
+  const eyeLight=new THREE.PointLight(0xff1100,0,6);eyeLight.position.set(0,.12,-1.2);g.add(eyeLight);
   const sy=sampleTerrainY(x,z)+CREATURE_HOVER;
   g.position.set(x,sy,z);scene.add(g);
   return{g,eyeLight,lureMat,mixer,x,z,y:sy,minY:sy,hp:3,vx:0,vz:0,state:'patrol',pa:Math.random()*Math.PI*2,atkcd:0,bodyT:0,terrainT:Math.random()*.8,dead:false};
@@ -584,7 +586,7 @@ function tryInteract(){
   if(P.cores>=5&&Math.hypot(P.pos.x,P.pos.z)<8)activateBeacon();
 }
 function collectItem(p){
-  p.collected=true;scene.remove(p.mesh);scene.remove(p.light);sfxCollect();
+  p.collected=true;scene.remove(p.mesh);if(p.light)scene.remove(p.light);sfxCollect();
   if(p.type==='core'){P.cores++;updCoreIcons();showMsg(P.cores<5?`CORE ${P.cores}/5 RECOVERED`:'ALL CORES SECURED\nRETURN TO WRECKAGE');}
   else if(p.type==='cell'){P.power=Math.min(100,P.power+CELL_RESTORE);showMsg('+25% EMERGENCY POWER');}
   else{P.shield=true;P.shieldT=SHIELD_DUR;const sf=document.getElementById('shdFlash');sf.style.opacity=.7;setTimeout(()=>{sf.style.opacity=0;},250);showMsg('SHIELD ACTIVE — 8s');}
@@ -631,6 +633,7 @@ function flashDmg(){const el=document.getElementById('dmgFlash');el.style.opacit
 
 // ─── DIRECTIONAL DAMAGE INDICATOR ─────────────────────────────
 const dmgEdges={N:document.getElementById('dmgN'),E:document.getElementById('dmgE'),S:document.getElementById('dmgS'),W:document.getElementById('dmgW')};
+const dmgEdgeList=Object.entries(dmgEdges);
 const dmgDirs=[];
 function showDmgDir(sx,sz){
   if(!gameOn)return;
@@ -648,7 +651,7 @@ function updDmgDir(dt){
     if(ny<-.25)op.N=Math.max(op.N,-ny*v);
     if(ny>.25)op.S=Math.max(op.S,ny*v);
   }
-  for(const[k,el]of Object.entries(dmgEdges))el.style.opacity=op[k];
+  for(const[k,el]of dmgEdgeList)el.style.opacity=op[k];
 }
 
 // ─── TORPEDO UPDATE ───────────────────────────────────────────
@@ -679,7 +682,7 @@ function updLurker(l,dt){
   l.x=Math.max(-88,Math.min(88,l.x+l.vx));l.z=Math.max(-88,Math.min(88,l.z+l.vz));
   l.terrainT-=dt;if(l.terrainT<=0){l.terrainT=.8;l.minY=sampleTerrainY(l.x,l.z)+CREATURE_HOVER;}
   l.y=Math.max(l.minY,l.y);
-  if(Math.abs(l.vx)+Math.abs(l.vz)>.001){const ta=Math.atan2(l.vx,l.vz),ca=l.g.rotation.y,d=((ta-ca+Math.PI*3)%(Math.PI*2))-Math.PI;l.g.rotation.y+=d*Math.min(1,dt*5);}
+  if(Math.abs(l.vx)+Math.abs(l.vz)>.001){const ta=Math.atan2(l.vx,l.vz)+Math.PI,ca=l.g.rotation.y,d=((ta-ca+Math.PI*3)%(Math.PI*2))-Math.PI;l.g.rotation.y+=d*Math.min(1,dt*5);}
   l.bodyT+=dt*2.2;l.g.rotation.z=Math.sin(l.bodyT)*.045;l.g.position.set(l.x,l.y,l.z);
   if(l.mixer&&dist<40)l.mixer.update(dt);
 }
@@ -707,7 +710,8 @@ function updCrusher(cr,dt){
   cr.atkcd=Math.max(0,cr.atkcd-dt);
   cr.x=Math.max(-88,Math.min(88,cr.x+cr.vx));cr.z=Math.max(-88,Math.min(88,cr.z+cr.vz));
   cr.terrainT-=dt;if(cr.terrainT<=0){cr.terrainT=.9;cr.minY=sampleTerrainY(cr.x,cr.z)+.9;}cr.y=cr.minY;
-  if(Math.abs(cr.vx)+Math.abs(cr.vz)>.001){const ta=Math.atan2(cr.vx,cr.vz),ca=cr.g.rotation.y,d=((ta-ca+Math.PI*3)%(Math.PI*2))-Math.PI;cr.g.rotation.y+=d*Math.min(1,dt*3);}
+  if(Math.abs(cr.vx)+Math.abs(cr.vz)>.001){const ta=Math.atan2(cr.vx,cr.vz)+Math.PI,ca=cr.g.rotation.y,d=((ta-ca+Math.PI*3)%(Math.PI*2))-Math.PI;cr.g.rotation.y+=d*Math.min(1,dt*3);}
+  cr.bodyT+=dt*1.1;cr.g.rotation.z=Math.sin(cr.bodyT)*.03;
   cr.g.position.set(cr.x,cr.y,cr.z);
 }
 function updSwarmling(sw,dt){
@@ -720,7 +724,7 @@ function updSwarmling(sw,dt){
   sw.x=Math.max(-88,Math.min(88,sw.x+sw.vx));sw.z=Math.max(-88,Math.min(88,sw.z+sw.vz));
   sw.terrainT-=dt;if(sw.terrainT<=0){sw.terrainT=.6;sw.minY=sampleTerrainY(sw.x,sw.z)+CREATURE_HOVER*.7;}
   sw.y=Math.max(sw.minY,Math.min(6,sw.y+Math.sin(Date.now()*.003+sw.pa)*.03));
-  if(Math.abs(sw.vx)+Math.abs(sw.vz)>.001){const ta=Math.atan2(sw.vx,sw.vz),ca=sw.g.rotation.y,d=((ta-ca+Math.PI*3)%(Math.PI*2))-Math.PI;sw.g.rotation.y+=d*Math.min(1,dt*9);}
+  if(Math.abs(sw.vx)+Math.abs(sw.vz)>.001){const ta=Math.atan2(sw.vx,sw.vz)+Math.PI,ca=sw.g.rotation.y,d=((ta-ca+Math.PI*3)%(Math.PI*2))-Math.PI;sw.g.rotation.y+=d*Math.min(1,dt*9);}
   sw.bodyT+=dt*4;sw.g.rotation.z=Math.sin(sw.bodyT)*.22;sw.g.position.set(sw.x,sw.y,sw.z);
 }
 
@@ -741,8 +745,8 @@ function updScene(dt,time){
   for(const c of corals){const s=.6+Math.sin(time*1.2+c.t)*.4;c.m.material.color.copy(c.baseCol).multiplyScalar(s);}
   // Alien plant cap pulse
   for(const ap of alienPlants){ap.t+=dt*1.1;const s=.65+Math.sin(ap.t)*.35;ap.cap.material.color.copy(ap.col).multiplyScalar(s);}
-  for(const p of pickups){if(p.collected)continue;p.t+=dt*1.3;p.mesh.position.y=p.y+Math.sin(p.t)*.22;p.mesh.rotation.y+=dt*1.1;p.light.position.y=p.mesh.position.y;}
-  for(let i=deathFlashes.length-1;i>=0;i--){const f=deathFlashes[i];f.t+=dt*3;f.m.scale.setScalar(1+f.t*4);f.m.material.opacity=Math.max(0,1-f.t);if(f.t>=1){scene.remove(f.m);deathFlashes.splice(i,1);}}
+  for(const p of pickups){if(p.collected)continue;p.t+=dt*1.3;p.mesh.position.y=p.y+Math.sin(p.t)*.22;p.mesh.rotation.y+=dt*1.1;if(p.light)p.light.position.y=p.mesh.position.y;}
+  for(let i=deathFlashes.length-1;i>=0;i--){const f=deathFlashes[i];f.t+=dt*3;f.m.scale.setScalar(1+f.t*4);f.m.material.opacity=Math.max(0,1-f.t);if(f.t>=1){f.m.geometry.dispose();f.m.material.dispose();scene.remove(f.m);deathFlashes.splice(i,1);}}
   WEAPON.cooldown=Math.max(0,WEAPON.cooldown-dt);
   if(WEAPON.ammo<WEAPON.maxAmmo){WEAPON.recharge+=dt;if(WEAPON.recharge>=1.8){WEAPON.recharge=0;WEAPON.ammo++;updAmmo();}}
   // Spore drift — pre-baked, no random
@@ -754,12 +758,12 @@ let heartT=0;
 function updHeartbeat(dt){if(P.power<20){heartT-=dt;if(heartT<=0){sfxHeart();heartT=1.1;}}}
 
 // ─── MAIN UPDATE ──────────────────────────────────────────────
-const fwd=new THREE.Vector3(),moveDir=new THREE.Vector3();
+const fwd=new THREE.Vector3(),moveDir=new THREE.Vector3(),_yawEuler=new THREE.Euler(0,0,0,'YXZ');
 function update(dt,time){
   moveDir.set(0,0,0);
   if(keys['KeyW'])moveDir.z=-1;if(keys['KeyS'])moveDir.z=1;if(keys['KeyA'])moveDir.x=-1;if(keys['KeyD'])moveDir.x=1;
   const vy=(keys['Space']?1:0)-((keys['ShiftLeft']||keys['ShiftRight'])?1:0);
-  if(moveDir.x||moveDir.z){moveDir.normalize();fwd.set(moveDir.x,0,moveDir.z).applyEuler(new THREE.Euler(0,P.yaw,0));P.pos.x+=fwd.x*MOVE_SPD*dt;P.pos.z+=fwd.z*MOVE_SPD*dt;}
+  if(moveDir.x||moveDir.z){moveDir.normalize();_yawEuler.y=P.yaw;fwd.set(moveDir.x,0,moveDir.z).applyEuler(_yawEuler);P.pos.x+=fwd.x*MOVE_SPD*dt;P.pos.z+=fwd.z*MOVE_SPD*dt;}
   P.pos.y+=vy*MOVE_SPD*.65*dt;
   P.pos.x=Math.max(-88,Math.min(88,P.pos.x));P.pos.z=Math.max(-88,Math.min(88,P.pos.z));
   P.pos.y=Math.max(sampleTerrainY(P.pos.x,P.pos.z)+PLAYER_EYE,Math.min(30,P.pos.y));
@@ -767,7 +771,7 @@ function update(dt,time){
   if(P.flashOn){const dir=new THREE.Vector3(0,0,-1).applyEuler(camera.rotation);flashSpot.position.copy(P.pos);flashTgt.position.copy(P.pos).add(dir.multiplyScalar(10));}
   P.power=Math.max(0,P.power-(100/POWER_DURATION)*dt);
   if(P.shield){P.shieldT-=dt;if(P.shieldT<=0)P.shield=false;}
-  if(beaconOn){beaconT-=dt;const rem=Math.ceil(beaconT);if(rem!==beaconMsg&&rem>0){beaconMsg=rem;showMsg(`BEACON: RESCUE IN ${rem}s`);updCoreIcons();}if(beaconT<=0){endGame(true);return;}}
+  if(beaconOn){beaconT-=dt;const rem=Math.ceil(beaconT);if(rem!==beaconMsg&&rem>0){beaconMsg=rem;showMsg(`BEACON: RESCUE IN ${rem}s`);updCoreIcons();tone(rem>3?660:880,'sine',.07,.14);}if(beaconT<=0){endGame(true);return;}}
   lurkers.forEach(l=>updLurker(l,dt));phantoms.forEach(p=>updPhantom(p,dt));crushers.forEach(c=>updCrusher(c,dt));swarmlings.forEach(s=>updSwarmling(s,dt));
   updTorpedoes(dt);updBubbles(dt);updScene(dt,time);updHeartbeat(dt);updDmgDir(dt);updHUD();updIPrompt();updBiome();
   if(P.health<=0||P.power<=0)endGame(false);
@@ -792,7 +796,7 @@ function showStart(){document.getElementById('loadScreen').style.display='none';
 
 setLoad('LOADING CREATURE DATA',20);
 let loadDone=false;
-const loadTO=setTimeout(()=>{if(loadDone)return;loadDone=true;buildCreatures(null);showStart();},12000);
+const loadTO=setTimeout(()=>{if(loadDone)return;loadDone=true;setLoad('READY',100);buildCreatures(null);showStart();},12000);
 if(typeof THREE.GLTFLoader!=='undefined'){
   new THREE.GLTFLoader().load(
     FISH_MODEL_URL,
