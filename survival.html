@@ -64,6 +64,11 @@ body::after{content:'';position:fixed;inset:0;z-index:5;pointer-events:none;back
 #retryBtn{background:none;border:2px solid #00ffcc;color:#00ffcc;padding:12px 44px;font-family:'Orbitron',monospace;font-size:12px;letter-spacing:4px;cursor:pointer;pointer-events:all;text-shadow:0 0 10px #00ffcc;transition:all .3s;}
 #retryBtn:hover{background:rgba(0,255,200,.1);}
 #biomeLabel{position:absolute;top:50px;left:50%;transform:translateX(-50%);font-size:8px;letter-spacing:5px;color:#002a1e;transition:color .8s;}
+#darkVignette{position:fixed;inset:0;z-index:8;pointer-events:none;background:radial-gradient(ellipse at center,transparent 22%,rgba(0,0,0,.97)100%);opacity:0;transition:opacity 1.2s ease;}
+#sonarRing{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:0;height:0;border-radius:50%;border:2px solid rgba(0,255,200,0);pointer-events:none;z-index:12;}
+#sonarHUD{position:absolute;bottom:56px;right:26px;font-size:9px;letter-spacing:2px;color:#005544;font-family:'Orbitron',monospace;text-align:right;}
+#sonarState{color:#004433;}
+#threatWarn{position:absolute;top:22%;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:5px;color:#ff2244;text-shadow:0 0 14px #ff2244,0 0 28px #ff0022;font-family:'Orbitron',monospace;opacity:0;transition:opacity .08s;pointer-events:none;white-space:nowrap;}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,6 +90,7 @@ body::after{content:'';position:fixed;inset:0;z-index:5;pointer-events:none;back
     <div><span>WASD</span> — Swim</div><div><span>SPACE/SHIFT</span> — Rise/Dive</div>
     <div><span>MOUSE</span> — Look</div><div><span>F</span> — Toggle flashlight</div>
     <div><span>LEFT CLICK / Q</span> — Fire torpedo</div><div><span>E</span> — Collect/Activate</div>
+    <div><span>TAB</span> — Active sonar</div><div><span>F</span> — Toggle flashlight</div>
   </div>
   <button id="startBtn">DIVE IN</button>
 </div>
@@ -97,11 +103,15 @@ body::after{content:'';position:fixed;inset:0;z-index:5;pointer-events:none;back
   <div id="flashDisplay" class="lit">FLASHLIGHT: <span id="fState">ON</span></div>
   <div id="biomeLabel">ABYSSAL PLAIN</div>
   <div id="msg"></div><div id="xhair"></div><div id="iPrompt">[ E ] INTERACT</div>
+  <div id="sonarHUD">SONAR: <span id="sonarState">READY</span></div>
+  <div id="threatWarn"></div>
 </div>
 <div id="endScreen"><div id="endTitle"></div><div id="endSub"></div><button id="retryBtn">RETRY DIVE</button></div>
 <div id="lockMsg">CLICK TO LOCK CURSOR</div>
 <div id="dmgFlash"></div><div id="shdFlash"></div>
 <div id="dmgN" class="dmgEdge"></div><div id="dmgE" class="dmgEdge"></div><div id="dmgS" class="dmgEdge"></div><div id="dmgW" class="dmgEdge"></div>
+<div id="darkVignette"></div>
+<div id="sonarRing"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
@@ -123,6 +133,8 @@ const PHNT_RANGE_DRK=14,PHNT_RANGE_LIT=28,ATK_DIST=3.2,ATK_CD=1.6;
 const CRUSHER_SPD=1.6,CRUSHER_RANGE=22,CRUSHER_DMG=22,CRUSHER_HP=8;
 const SWARM_SPD=6.5,SWARM_RANGE=30,SWARM_DMG=5,SWARM_CD=0.7;
 const PLAYER_EYE=1.65,CREATURE_HOVER=1.35;
+const SNOW_CNT=200,SONAR_COOLDOWN=25,SONAR_ECHO_DUR=2.8,SONAR_RANGE=60;
+const LURK_STALK_DIST=18;
 const FISH_MODEL_URL='https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/BarramundiFish/glTF-Binary/BarramundiFish.glb';
 
 // ─── PERLIN NOISE ─────────────────────────────────────────────
@@ -410,6 +422,15 @@ for(let i=0;i<SPORE_CNT;i++){
 const sporeGeo=new THREE.BufferGeometry();sporeGeo.setAttribute('position',new THREE.BufferAttribute(sporeArr,3));
 scene.add(new THREE.Points(sporeGeo,new THREE.PointsMaterial({color:0x2a6678,size:.14,transparent:true,opacity:.32,sizeAttenuation:true})));
 
+// ─── MARINE SNOW ──────────────────────────────────────────────
+const snowArr=new Float32Array(SNOW_CNT*3),snowDriftX=new Float32Array(SNOW_CNT),snowDriftZ=new Float32Array(SNOW_CNT);
+for(let i=0;i<SNOW_CNT;i++){
+  snowArr[i*3]=(Math.random()-.5)*200;snowArr[i*3+1]=Math.random()*32;snowArr[i*3+2]=(Math.random()-.5)*200;
+  snowDriftX[i]=(Math.random()-.5)*.008;snowDriftZ[i]=(Math.random()-.5)*.006;
+}
+const snowGeo=new THREE.BufferGeometry();snowGeo.setAttribute('position',new THREE.BufferAttribute(snowArr,3));
+scene.add(new THREE.Points(snowGeo,new THREE.PointsMaterial({color:0x9ab5cc,size:.12,transparent:true,opacity:.22,sizeAttenuation:true,depthWrite:false})));
+
 // ─── PICKUPS ──────────────────────────────────────────────────
 const CORE_POS=[[-30,-26],[36,-42],[-52,22],[26,52],[-18,-62]];
 const CELL_POS=[[-10,15],[22,-10],[-36,6],[16,37],[-26,-16],[46,-16],[-16,47],[32,21],[-46,-32],[12,-52],[56,12],[-56,-12],[6,56],[-6,-56],[42,46]];
@@ -489,7 +510,8 @@ function mkLurker(x,z,gltf){
   const eyeLight=new THREE.PointLight(0xff1100,0,6);eyeLight.position.set(0,.12,-1.2);g.add(eyeLight);
   const sy=sampleTerrainY(x,z)+CREATURE_HOVER;
   g.position.set(x,sy,z);scene.add(g);
-  return{g,eyeLight,lureMat,mixer,x,z,y:sy,minY:sy,hp:3,vx:0,vz:0,state:'patrol',pa:Math.random()*Math.PI*2,atkcd:0,bodyT:0,terrainT:Math.random()*.8,dead:false};
+  const orbitDir=Math.random()<.5?1:-1;
+  return{g,eyeLight,lureMat,lureMesh,mixer,x,z,y:sy,minY:sy,hp:3,vx:0,vz:0,state:'patrol',pa:Math.random()*Math.PI*2,atkcd:0,bodyT:0,terrainT:Math.random()*.8,dead:false,orbitDir,orbitAngle:Math.random()*Math.PI*2,stalkTimer:0};
 }
 
 // Phantom — bioluminescent jellyfish, lean geometry
@@ -573,7 +595,14 @@ const P={pos:new THREE.Vector3(0,2,9),yaw:0,pitch:0,health:100,power:100,shield:
 
 // ─── INPUT ────────────────────────────────────────────────────
 const keys={};let locked=false,gameOn=false;
-document.addEventListener('keydown',e=>{keys[e.code]=true;if(!gameOn)return;if(e.code==='KeyF'){P.flashOn=!P.flashOn;flashSpot.intensity=P.flashOn?4:0;updFlash();}if(e.code==='KeyE')tryInteract();if(e.code==='KeyQ')fireTorpedo();});
+let sonarCooldown=0,coreBeepT=0;
+const sonarEchoes=[];
+const _sonarRingEl=document.getElementById('sonarRing');
+const _sonarStateEl=document.getElementById('sonarState');
+const _darkVig=document.getElementById('darkVignette');
+const _threatWarnEl=document.getElementById('threatWarn');
+let _threatTO=null;
+document.addEventListener('keydown',e=>{keys[e.code]=true;if(!gameOn)return;if(e.code==='KeyF'){P.flashOn=!P.flashOn;flashSpot.intensity=P.flashOn?4:0;updFlash();updDarkVignette();}if(e.code==='KeyE')tryInteract();if(e.code==='KeyQ')fireTorpedo();if(e.code==='Tab'){e.preventDefault();activateSonar();}});
 document.addEventListener('keyup',e=>{keys[e.code]=false;});
 document.addEventListener('mousemove',e=>{if(!locked||!gameOn)return;P.yaw-=e.movementX*.0022;P.pitch-=e.movementY*.0022;P.pitch=Math.max(-1.38,Math.min(1.38,P.pitch));});
 document.addEventListener('mousedown',e=>{if(e.button===0&&gameOn&&locked)fireTorpedo();});
@@ -617,6 +646,51 @@ function updCoreIcons(){
   document.getElementById('objStatus').textContent=P.cores<5?`COLLECT CORES ${P.cores}/5`:beaconOn?'SURVIVE THE BEACON!':'RETURN TO WRECKAGE';
 }
 function updFlash(){document.getElementById('flashDisplay').className=P.flashOn?'lit':'';document.getElementById('fState').textContent=P.flashOn?'ON':'OFF';}
+function updDarkVignette(){_darkVig.style.opacity=P.flashOn?'0':'1';}
+function showThreatWarning(text){_threatWarnEl.textContent=text;_threatWarnEl.style.opacity='1';clearTimeout(_threatTO);_threatTO=setTimeout(()=>{_threatWarnEl.style.opacity='0';},2200);tone(220,'sawtooth',.15,.06,170);}
+
+// ─── SONAR SYSTEM ──────────────────────────────────────────────
+const sonarEchoGeo=new THREE.SphereGeometry(.35,6,4);
+function activateSonar(){
+  if(!gameOn||sonarCooldown>0)return;
+  sonarCooldown=SONAR_COOLDOWN;
+  tone(1800,'sine',.05,.14,3600);setTimeout(()=>tone(900,'sine',.07,.10,1800),55);setTimeout(()=>tone(450,'sine',.09,.07,900),110);
+  _sonarRingEl.style.transition='none';
+  _sonarRingEl.style.width='0px';_sonarRingEl.style.height='0px';
+  _sonarRingEl.style.borderColor='rgba(0,255,200,0.75)';_sonarRingEl.style.opacity='1';
+  requestAnimationFrame(()=>{
+    _sonarRingEl.style.transition='width 1.4s ease-out,height 1.4s ease-out,border-color 1.4s ease-out,opacity 1.4s ease-out';
+    _sonarRingEl.style.width='180vw';_sonarRingEl.style.height='180vw';
+    _sonarRingEl.style.borderColor='rgba(0,255,200,0)';_sonarRingEl.style.opacity='0';
+  });
+  [...lurkers,...phantoms,...crushers,...swarmlings].forEach(e=>{
+    if(e.dead)return;
+    if(Math.hypot(P.pos.x-e.x,P.pos.z-e.z)>SONAR_RANGE)return;
+    const m=new THREE.Mesh(sonarEchoGeo,new THREE.MeshBasicMaterial({color:0x00ffcc,transparent:true,opacity:.9,depthWrite:false}));
+    m.position.set(e.x,e.g.position.y+.5,e.z);scene.add(m);
+    sonarEchoes.push({m,life:SONAR_ECHO_DUR,max:SONAR_ECHO_DUR});
+  });
+  showMsg('ACTIVE SONAR — SCANNING');
+}
+function updSonar(dt){
+  if(sonarCooldown>0){sonarCooldown=Math.max(0,sonarCooldown-dt);_sonarStateEl.textContent=sonarCooldown>0?Math.ceil(sonarCooldown)+'s':'READY';_sonarStateEl.style.color=sonarCooldown>0?'#003322':'#00ffcc';}
+  for(let i=sonarEchoes.length-1;i>=0;i--){
+    const ec=sonarEchoes[i];ec.life-=dt;
+    ec.m.material.opacity=Math.max(0,(ec.life/ec.max)*.85);
+    ec.m.scale.setScalar(1+(1-ec.life/ec.max)*2.4);
+    if(ec.life<=0){ec.m.geometry.dispose();ec.m.material.dispose();scene.remove(ec.m);sonarEchoes.splice(i,1);}
+  }
+}
+
+// ─── CORE PROXIMITY DETECTOR ──────────────────────────────────
+function updCoreProximity(dt){
+  if(!actx)return;
+  let closest=Infinity;
+  for(const p of pickups){if(!p.collected&&p.type==='core'){const d=Math.hypot(P.pos.x-p.x,P.pos.z-p.z);if(d<closest)closest=d;}}
+  if(closest>18)return;
+  coreBeepT-=dt;
+  if(coreBeepT<=0){const t=Math.max(0,closest/18);coreBeepT=.2+t*1.6;tone(1100+t*(-350),'sine',.04,.05+(.06*(1-t)));}
+}
 let iPvis=false;
 function updIPrompt(){let show=false;for(const p of pickups){if(!p.collected&&Math.hypot(P.pos.x-p.x,P.pos.z-p.z)<3.5){show=true;break;}}if(!show&&P.cores>=5&&Math.hypot(P.pos.x,P.pos.z)<8)show=true;if(show!==iPvis){document.getElementById('iPrompt').style.opacity=show?1:0;iPvis=show;}}
 let lastBiome='';
@@ -676,14 +750,34 @@ function updLurker(l,dt){
   if(l.dead)return;
   const dx=P.pos.x-l.x,dz=P.pos.z-l.z,dist=Math.sqrt(dx*dx+dz*dz);
   const range=P.flashOn?LURK_RANGE_LIT:LURK_RANGE_DRK;
-  if(l.state==='patrol'){l.pa+=.25*dt;l.vx=Math.cos(l.pa)*.6*dt;l.vz=Math.sin(l.pa)*.6*dt;if(dist<range){l.state='hunt';l.eyeLight.intensity=2;sfxAlert();}}
-  else{const spd=LURK_SPD*dt,ang=Math.atan2(dx,dz);l.vx=Math.sin(ang)*spd;l.vz=Math.cos(ang)*spd;if(dist>range*1.6&&!beaconOn){l.state='patrol';l.eyeLight.intensity=0;}if(dist<ATK_DIST&&l.atkcd<=0){if(!P.shield){P.health=Math.max(0,P.health-12);flashDmg();sfxDamage();showDmgDir(l.x,l.z);}l.atkcd=ATK_CD;}}
+  if(l.state==='patrol'){
+    l.pa+=.25*dt;l.vx=Math.cos(l.pa)*.6*dt;l.vz=Math.sin(l.pa)*.6*dt;
+    if(dist<range){l.state='stalk';l.eyeLight.intensity=.8;showThreatWarning('LURKER DETECTED YOU');}
+  }else if(l.state==='stalk'){
+    // Orbit player at LURK_STALK_DIST before committing
+    l.orbitAngle+=l.orbitDir*.55*dt;
+    const tx=P.pos.x+Math.cos(l.orbitAngle)*LURK_STALK_DIST;
+    const tz=P.pos.z+Math.sin(l.orbitAngle)*LURK_STALK_DIST;
+    const odx=tx-l.x,odz=tz-l.z,od=Math.sqrt(odx*odx+odz*odz);
+    if(od>.1){const spd=LURK_SPD*.85*dt;l.vx=(odx/od)*spd;l.vz=(odz/od)*spd;}
+    l.eyeLight.intensity=.6+Math.sin(Date.now()*.002)*.35;
+    l.stalkTimer+=dt;
+    if(dist>range*1.8&&!beaconOn){l.state='patrol';l.eyeLight.intensity=0;l.stalkTimer=0;}
+    if(l.stalkTimer>=3.8||dist<ATK_DIST*2){l.state='hunt';l.eyeLight.intensity=2.2;l.stalkTimer=0;sfxAlert();showThreatWarning('LURKER IS HUNTING');}
+  }else{
+    const spd=LURK_SPD*dt,ang=Math.atan2(dx,dz);l.vx=Math.sin(ang)*spd;l.vz=Math.cos(ang)*spd;
+    if(dist>range*1.6&&!beaconOn){l.state='patrol';l.eyeLight.intensity=0;l.stalkTimer=0;}
+    if(dist<ATK_DIST&&l.atkcd<=0){if(!P.shield){P.health=Math.max(0,P.health-12);flashDmg();sfxDamage();showDmgDir(l.x,l.z);}l.atkcd=ATK_CD;}
+  }
   l.atkcd=Math.max(0,l.atkcd-dt);
   l.x=Math.max(-88,Math.min(88,l.x+l.vx));l.z=Math.max(-88,Math.min(88,l.z+l.vz));
   l.terrainT-=dt;if(l.terrainT<=0){l.terrainT=.8;l.minY=sampleTerrainY(l.x,l.z)+CREATURE_HOVER;}
   l.y=Math.max(l.minY,l.y);
   if(Math.abs(l.vx)+Math.abs(l.vz)>.001){const ta=Math.atan2(l.vx,l.vz)+Math.PI,ca=l.g.rotation.y,d=((ta-ca+Math.PI*3)%(Math.PI*2))-Math.PI;l.g.rotation.y+=d*Math.min(1,dt*5);}
-  l.bodyT+=dt*2.2;l.g.rotation.z=Math.sin(l.bodyT)*.045;l.g.position.set(l.x,l.y,l.z);
+  l.bodyT+=dt*2.2;l.g.rotation.z=Math.sin(l.bodyT)*.045;
+  // Animate bioluminescent lure — bobs and swings from head
+  l.lureMesh.position.set(Math.cos(l.bodyT*.7)*.14,0.58+Math.sin(l.bodyT*1.4)*.26,1.52+Math.sin(l.bodyT*.5)*.11);
+  l.g.position.set(l.x,l.y,l.z);
   if(l.mixer&&dist<40)l.mixer.update(dt);
 }
 function updPhantom(ph,dt){
@@ -716,6 +810,12 @@ function updCrusher(cr,dt){
 }
 function updSwarmling(sw,dt){
   if(sw.dead)return;
+  // Separation: push away from overlapping swarmlings
+  for(const other of swarmlings){
+    if(other===sw||other.dead)continue;
+    const sdx=sw.x-other.x,sdz=sw.z-other.z,sd2=sdx*sdx+sdz*sdz;
+    if(sd2<6.25&&sd2>.001){const sd=Math.sqrt(sd2),push=(2.5-sd)/2.5*1.6*dt;sw.x+=sdx/sd*push;sw.z+=sdz/sd*push;}
+  }
   const dx=P.pos.x-sw.x,dz=P.pos.z-sw.z,dist=Math.sqrt(dx*dx+dz*dz);
   const ang=Math.atan2(dx,dz);
   if(dist<SWARM_RANGE){sw.vx=Math.sin(ang)*SWARM_SPD*dt+(Math.random()-.5)*.05;sw.vz=Math.cos(ang)*SWARM_SPD*dt+(Math.random()-.5)*.05;if(dist<ATK_DIST*.8&&sw.atkcd<=0){if(!P.shield){P.health=Math.max(0,P.health-SWARM_DMG);flashDmg();sfxDamage();showDmgDir(sw.x,sw.z);}sw.atkcd=SWARM_CD;}}
@@ -753,6 +853,13 @@ function updScene(dt,time){
   const spa=sporeGeo.attributes.position.array;
   for(let i=0;i<SPORE_CNT;i++){spa[i*3]+=sporeDrift[i*3];spa[i*3+1]+=sporeDrift[i*3+1];spa[i*3+2]+=sporeDrift[i*3+2];if(spa[i*3+1]>20)spa[i*3+1]=.3;}
   sporeGeo.attributes.position.needsUpdate=true;
+  // Marine snow fall
+  const sna=snowGeo.attributes.position.array;
+  for(let i=0;i<SNOW_CNT;i++){
+    sna[i*3]+=snowDriftX[i];sna[i*3+1]-=(.05+Math.sin(time*.12+i)*.014)*dt;sna[i*3+2]+=snowDriftZ[i];
+    if(sna[i*3+1]<-4){sna[i*3]=(Math.random()-.5)*200;sna[i*3+1]=32+Math.random()*4;sna[i*3+2]=(Math.random()-.5)*200;}
+  }
+  snowGeo.attributes.position.needsUpdate=true;
 }
 let heartT=0;
 function updHeartbeat(dt){if(P.power<20){heartT-=dt;if(heartT<=0){sfxHeart();heartT=1.1;}}}
@@ -773,14 +880,14 @@ function update(dt,time){
   if(P.shield){P.shieldT-=dt;if(P.shieldT<=0)P.shield=false;}
   if(beaconOn){beaconT-=dt;const rem=Math.ceil(beaconT);if(rem!==beaconMsg&&rem>0){beaconMsg=rem;showMsg(`BEACON: RESCUE IN ${rem}s`);updCoreIcons();tone(rem>3?660:880,'sine',.07,.14);}if(beaconT<=0){endGame(true);return;}}
   lurkers.forEach(l=>updLurker(l,dt));phantoms.forEach(p=>updPhantom(p,dt));crushers.forEach(c=>updCrusher(c,dt));swarmlings.forEach(s=>updSwarmling(s,dt));
-  updTorpedoes(dt);updBubbles(dt);updScene(dt,time);updHeartbeat(dt);updDmgDir(dt);updHUD();updIPrompt();updBiome();
+  updTorpedoes(dt);updBubbles(dt);updScene(dt,time);updHeartbeat(dt);updDmgDir(dt);updSonar(dt);updCoreProximity(dt);updHUD();updIPrompt();updBiome();
   if(P.health<=0||P.power<=0)endGame(false);
 }
 
 // ─── LOOP ─────────────────────────────────────────────────────
 let lastT=0;
 function loop(t){requestAnimationFrame(loop);const dt=gameOn?Math.min((t-lastT)/1000,.033):0;lastT=t;if(gameOn)update(dt,t/1000);doRender();}
-document.getElementById('startBtn').addEventListener('click',()=>{initAudio();document.getElementById('overlay').style.display='none';document.getElementById('hud').style.display='block';document.getElementById('lockMsg').style.display='block';updCoreIcons();updFlash();updHUD();updAmmo();gameOn=true;document.body.requestPointerLock();});
+document.getElementById('startBtn').addEventListener('click',()=>{initAudio();document.getElementById('overlay').style.display='none';document.getElementById('hud').style.display='block';document.getElementById('lockMsg').style.display='block';updCoreIcons();updFlash();updDarkVignette();updHUD();updAmmo();gameOn=true;document.body.requestPointerLock();});
 document.getElementById('retryBtn').addEventListener('click',()=>location.reload());
 requestAnimationFrame(loop);
 
