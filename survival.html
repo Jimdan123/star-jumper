@@ -8,13 +8,13 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;overflow:hidden}
 #c{display:block;width:100vw;height:100vh;cursor:crosshair}
-body::after{content:'';position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,0.72)100%);}
+body::after{content:'';position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,0.78)100%);}
 #loadScreen{position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Orbitron',monospace;color:#00ffcc;}
 #loadTitle{font-size:11px;letter-spacing:8px;color:#003322;margin-bottom:22px;}
 #loadTrack{width:260px;height:3px;background:rgba(0,255,200,.08);border-radius:2px;overflow:hidden;margin-bottom:12px;}
 #loadFill{height:100%;width:0%;background:#00ffcc;border-radius:2px;transition:width .35s;}
 #loadMsg{font-size:9px;letter-spacing:3px;color:#002218;}
-#overlay{position:fixed;inset:0;z-index:30;background:radial-gradient(ellipse at center,#000e0c 0%,#000 100%);display:none;flex-direction:column;align-items:center;justify-content:center;font-family:'Orbitron',monospace;color:#00ffcc;text-align:center;padding:40px;}
+#overlay{position:fixed;inset:0;z-index:30;background:radial-gradient(ellipse at center,#00080e 0%,#000 100%);display:none;flex-direction:column;align-items:center;justify-content:center;font-family:'Orbitron',monospace;color:#00ffcc;text-align:center;padding:40px;}
 #overlay h1{font-size:clamp(50px,10vw,96px);font-weight:900;letter-spacing:16px;text-shadow:0 0 50px #00ffcc,0 0 100px #009966;margin-bottom:4px;animation:tp 3s ease-in-out infinite;}
 @keyframes tp{0%,100%{text-shadow:0 0 50px #00ffcc,0 0 100px #009966;}50%{text-shadow:0 0 80px #00ffee,0 0 160px #00cc88;}}
 .sub{font-size:13px;letter-spacing:9px;color:#005544;margin-bottom:32px;}
@@ -90,7 +90,7 @@ body::after{content:'';position:fixed;inset:0;z-index:5;pointer-events:none;back
   <div id="depthDisplay"><div>DEPTH</div><div><span id="depthVal">11200</span> <span style="font-size:10px">m</span></div></div>
   <div id="objPanel"><div class="oTitle">OBJECTIVE</div><div id="coreIcons"></div><div id="objStatus">COLLECT POWER CORES</div></div>
   <div id="flashDisplay" class="lit">FLASHLIGHT: <span id="fState">ON</span></div>
-  <div id="biomeLabel" id="biomeLabel">ABYSSAL PLAIN</div>
+  <div id="biomeLabel">ABYSSAL PLAIN</div>
   <div id="msg"></div><div id="xhair"></div><div id="iPrompt">[ E ] INTERACT</div>
 </div>
 <div id="endScreen"><div id="endTitle"></div><div id="endSub"></div><button id="retryBtn">RETRY DIVE</button></div>
@@ -109,7 +109,7 @@ body::after{content:'';position:fixed;inset:0;z-index:5;pointer-events:none;back
 <script>
 'use strict';
 // ═══════════════════════════════════════════════════════════════
-//  ABYSS — TRENCH SURVIVAL  v3
+//  ABYSS — TRENCH SURVIVAL  v4  (Subnautica visual overhaul)
 // ═══════════════════════════════════════════════════════════════
 const POWER_DURATION=180,CELL_RESTORE=25,SHIELD_DUR=8,MOVE_SPD=7;
 const LURK_SPD=2.8,PHANT_SPD=4.2,LURK_RANGE_LIT=26,LURK_RANGE_DRK=10;
@@ -140,10 +140,10 @@ function fbm(x,z,oct,per,lac){
   return v/m;
 }
 
-// ─── TERRAIN FUNCTIONS ────────────────────────────────────────
+// ─── TERRAIN ──────────────────────────────────────────────────
 function terrainH(x,z){
   const dist=Math.sqrt(x*x+z*z);
-  const flat=Math.max(0,1-dist/22); // flat spawn pad
+  const flat=Math.max(0,1-dist/22);
   const ridge=fbm(x*.018,z*.018,6,.52,2.05)*14;
   const detail=fbm(x*.06+5,z*.06+5,3,.45,2.1)*3.5;
   return (ridge+detail)*(1-flat*.88)-2.8;
@@ -157,11 +157,12 @@ function biomeAt(x,z){
   if(n<-.32)return'sandy';
   return'rocky';
 }
+// Subnautica deep-ocean biome palette
 const BIOME_COL={
-  volcanic:[.085,.028,.008],
-  coral:[.008,.072,.058],
-  sandy:[.038,.055,.042],
-  rocky:[.018,.038,.030]
+  volcanic:[.085,.016,.004],
+  coral:[.004,.042,.065],
+  sandy:[.018,.038,.056],
+  rocky:[.010,.022,.044]
 };
 const BIOME_NAMES={volcanic:'VOLCANIC RIDGE',coral:'CORAL GARDENS',sandy:'SANDY FLATS',rocky:'ABYSSAL PLAIN'};
 
@@ -170,13 +171,13 @@ const canvas=document.getElementById('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
 renderer.setSize(window.innerWidth,window.innerHeight);
-renderer.setClearColor(0x000e0c);
+renderer.setClearColor(0x00091a);
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.2;
+renderer.toneMappingExposure=1.15;
 renderer.outputEncoding=THREE.sRGBEncoding;
 
 const scene=new THREE.Scene();
-scene.fog=new THREE.FogExp2(0x000e0c,.026);
+scene.fog=new THREE.FogExp2(0x00091a,.022);
 const camera=new THREE.PerspectiveCamera(72,window.innerWidth/window.innerHeight,.1,150);
 camera.rotation.order='YXZ';
 
@@ -186,7 +187,7 @@ try{
   if(typeof THREE.EffectComposer!=='undefined'){
     composer=new THREE.EffectComposer(renderer);
     composer.addPass(new THREE.RenderPass(scene,camera));
-    composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(Math.floor(window.innerWidth*.5),Math.floor(window.innerHeight*.5)),1.5,.55,.08));
+    composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(Math.floor(window.innerWidth*.5),Math.floor(window.innerHeight*.5)),1.8,.6,.07));
   }
 }catch(e){composer=null;}
 function doRender(){try{composer?composer.render():renderer.render(scene,camera);}catch(e){renderer.render(scene,camera);}}
@@ -228,44 +229,39 @@ const sfxShoot=()=>tone(1100,'sine',.09,.18,500);
 const sfxHit=()=>tone(280,'sawtooth',.1,.12,120);
 const sfxKill=()=>tone(180,'square',.22,.16,60);
 
-// ─── PROCEDURAL TEXTURES (canvas-only, no CDN) ────────────────
+// ─── PROCEDURAL TEXTURES ──────────────────────────────────────
 function mkRockTex(seed){
   const sz=256,c=document.createElement('canvas');c.width=c.height=sz;const ctx=c.getContext('2d');
-  ctx.fillStyle='#030a07';ctx.fillRect(0,0,sz,sz);
-  // speckle base
+  ctx.fillStyle='#020609';ctx.fillRect(0,0,sz,sz);
   for(let i=0;i<3000;i++){const x=Math.random()*sz,y=Math.random()*sz,r=Math.random()*2.5+.3;
-    const v=Math.random()*.12+.02;ctx.fillStyle=`rgba(${~~(v*30+seed*20)},${~~(v*80)},${~~(v*60)},.7)`;
+    const v=Math.random()*.1+.02;ctx.fillStyle=`rgba(${~~(v*15+seed*10)},${~~(v*60)},${~~(v*90)},.7)`;
     ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
-  // cracks
   for(let i=0;i<12;i++){let cx=Math.random()*sz,cy=Math.random()*sz;
-    ctx.strokeStyle=`rgba(0,${40+Math.random()*30},${30+Math.random()*20},.3)`;ctx.lineWidth=.6;
+    ctx.strokeStyle=`rgba(0,${30+Math.random()*25},${50+Math.random()*30},.3)`;ctx.lineWidth=.6;
     ctx.beginPath();ctx.moveTo(cx,cy);
     for(let j=0;j<8;j++){cx+=(Math.random()-.5)*18;cy+=(Math.random()-.5)*18;ctx.lineTo(cx,cy);}ctx.stroke();}
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(6,6);return t;
 }
 function mkMetalTex(){
   const sz=256,c=document.createElement('canvas');c.width=c.height=sz;const ctx=c.getContext('2d');
-  ctx.fillStyle='#0d1214';ctx.fillRect(0,0,sz,sz);
-  // rust patches
+  ctx.fillStyle='#0a1018';ctx.fillRect(0,0,sz,sz);
   for(let i=0;i<800;i++){const x=Math.random()*sz,y=Math.random()*sz,r=Math.random()*5+1;
-    const v=Math.random();ctx.fillStyle=`rgba(${~~(v*120+40)},${~~(v*30)},${~~(v*10)},.4)`;
+    const v=Math.random();ctx.fillStyle=`rgba(${~~(v*100+30)},${~~(v*25)},${~~(v*8)},.4)`;
     ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
-  // panel lines
-  for(let i=0;i<6;i++){ctx.strokeStyle='rgba(0,20,15,.4)';ctx.lineWidth=1.5;
+  for(let i=0;i<6;i++){ctx.strokeStyle='rgba(0,15,25,.4)';ctx.lineWidth=1.5;
     ctx.strokeRect(Math.random()*sz*.5,Math.random()*sz*.5,40+Math.random()*80,40+Math.random()*80);}
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(3,3);return t;
 }
 function mkSandTex(){
   const sz=256,c=document.createElement('canvas');c.width=c.height=sz;const ctx=c.getContext('2d');
-  ctx.fillStyle='#060e0b';ctx.fillRect(0,0,sz,sz);
+  ctx.fillStyle='#050c10';ctx.fillRect(0,0,sz,sz);
   for(let i=0;i<5000;i++){const x=Math.random()*sz,y=Math.random()*sz,v=Math.random()*.06;
-    ctx.fillStyle=`rgba(${~~(v*60)},${~~(v*100)},${~~(v*80)},.5)`;ctx.fillRect(x,y,1,1);}
+    ctx.fillStyle=`rgba(${~~(v*40)},${~~(v*80)},${~~(v*110)},.5)`;ctx.fillRect(x,y,1,1);}
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(10,10);return t;
 }
 function mkLavaTex(){
   const sz=256,c=document.createElement('canvas');c.width=c.height=sz;const ctx=c.getContext('2d');
-  ctx.fillStyle='#050200';ctx.fillRect(0,0,sz,sz);
-  // lava cracks
+  ctx.fillStyle='#050100';ctx.fillRect(0,0,sz,sz);
   for(let i=0;i<8;i++){let cx=Math.random()*sz,cy=Math.random()*sz;
     const grd=ctx.createLinearGradient(cx,cy,cx+40,cy+40);
     grd.addColorStop(0,'rgba(255,80,0,.0)');grd.addColorStop(.5,'rgba(255,60,0,.6)');grd.addColorStop(1,'rgba(255,80,0,.0)');
@@ -273,30 +269,30 @@ function mkLavaTex(){
     for(let j=0;j<6;j++){cx+=(Math.random()-.5)*22;cy+=(Math.random()-.5)*22;ctx.lineTo(cx,cy);}ctx.stroke();}
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(4,4);return t;
 }
-
 const rockTex=mkRockTex(0),metalTex=mkMetalTex(),sandTex=mkSandTex(),lavaTex=mkLavaTex();
 
 // ─── LIGHTING ─────────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0x001a14,.65));
-const surfDir=new THREE.DirectionalLight(0x002e22,.28);surfDir.position.set(0,50,0);scene.add(surfDir);
+scene.add(new THREE.AmbientLight(0x001428,.5));
+const surfDir=new THREE.DirectionalLight(0x004466,.25);surfDir.position.set(0,50,0);scene.add(surfDir);
 const bioLights=[];
-for(let i=0;i<4;i++){
-  const pl=new THREE.PointLight([0x00cc88,0x007755,0x00aa66,0x004433][i],.5+Math.random()*.5,16+Math.random()*8);
-  pl.position.set((Math.random()-.5)*140,1+Math.random()*1.5,(Math.random()-.5)*140);
+const BIO_COLS=[0x00ccff,0x0088ff,0x00ffcc,0x0066ee,0x00aaff,0x004499];
+for(let i=0;i<6;i++){
+  const pl=new THREE.PointLight(BIO_COLS[i],.45+Math.random()*.4,18+Math.random()*10);
+  pl.position.set((Math.random()-.5)*140,1.2+Math.random()*1.5,(Math.random()-.5)*140);
   scene.add(pl);bioLights.push({pl,base:pl.intensity,t:Math.random()*Math.PI*2});
 }
-const wreckLight=new THREE.PointLight(0xff5500,1.8,20);wreckLight.position.set(0,2.8,0);scene.add(wreckLight);
+const wreckLight=new THREE.PointLight(0xff5500,2.2,22);wreckLight.position.set(0,2.8,0);scene.add(wreckLight);
 const VENT_POS=[[-25,10],[15,-35],[42,32]];
 const vents=VENT_POS.map(([x,z])=>{
-  const m=new THREE.Mesh(new THREE.CylinderGeometry(.35,.62,.72,10),new THREE.MeshStandardMaterial({color:0x061a0e,roughness:.9,metalness:.3,emissive:0x004418,emissiveIntensity:.8}));
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(.35,.62,.72,10),new THREE.MeshStandardMaterial({color:0x040e08,roughness:.9,metalness:.3,emissive:0x003322,emissiveIntensity:.9}));
   m.position.set(x,.36,z);scene.add(m);
-  const pl=new THREE.PointLight(0x00ff99,.9,10);pl.position.set(x,1.3,z);scene.add(pl);
+  const pl=new THREE.PointLight(0x00ffaa,.9,10);pl.position.set(x,1.3,z);scene.add(pl);
   return{x,z,pl};
 });
 const flashSpot=new THREE.SpotLight(0xaaffee,4,36,Math.PI/7,.5,1.1);
 const flashTgt=new THREE.Object3D();scene.add(flashTgt);flashSpot.target=flashTgt;scene.add(flashSpot);
 
-// ─── TERRAIN MESH with vertex colors + biome textures ─────────
+// ─── TERRAIN MESH ─────────────────────────────────────────────
 let floorMesh=null;
 (()=>{
   const SEG=60,SZ=220;
@@ -305,38 +301,36 @@ let floorMesh=null;
   const cols=new Float32Array(pos.count*3);
   for(let i=0;i<pos.count;i++){
     const x=pos.getX(i),z=pos.getZ(i);
-    const h=terrainH(x,z);
-    pos.setY(i,h);
-    const b=biomeAt(x,z);
-    const bc=BIOME_COL[b];
-    // add slight noise to vertex color for texture variation
-    const jit=(Math.random()-.5)*.012;
+    const h=terrainH(x,z);pos.setY(i,h);
+    const b=biomeAt(x,z);const bc=BIOME_COL[b];
+    const jit=(Math.random()-.5)*.01;
     cols[i*3]=bc[0]+jit;cols[i*3+1]=bc[1]+jit*.5;cols[i*3+2]=bc[2]+jit*.5;
   }
   geo.computeVertexNormals();
   geo.setAttribute('color',new THREE.BufferAttribute(cols,3));
-  const mat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.97,metalness:0,emissive:0x000907,emissiveIntensity:.55});
+  const mat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.97,metalness:0,emissive:0x000509,emissiveIntensity:.6});
   floorMesh=new THREE.Mesh(geo,mat);scene.add(floorMesh);
 })();
 
-// Bio glow patches — placed per biome
-for(let i=0;i<10;i++){
-  const ang=Math.random()*Math.PI*2,r=8+Math.random()*70;
+// ─── BIOLUMINESCENT FLOOR PATCHES ─────────────────────────────
+for(let i=0;i<24;i++){
+  const ang=Math.random()*Math.PI*2,r=6+Math.random()*75;
   const px=Math.cos(ang)*r,pz=Math.sin(ang)*r;
   const b=biomeAt(px,pz);
   let hsl;
-  if(b==='volcanic')hsl=[.04,.9,.4];
-  else if(b==='coral')hsl=[.45,.9,.35];
-  else if(b==='sandy')hsl=[.38,.7,.3];
-  else hsl=[.42,.9,.32];
-  const m=new THREE.Mesh(new THREE.CircleGeometry(1.5+Math.random()*3,12),new THREE.MeshStandardMaterial({color:0,emissive:new THREE.Color().setHSL(...hsl),emissiveIntensity:1.3,roughness:1}));
+  if(b==='volcanic')hsl=[.06,.95,.4];
+  else if(b==='coral')hsl=[.52,.95,.38];
+  else if(b==='sandy')hsl=[.55,.8,.32];
+  else hsl=[.58,.95,.35];
+  const sz=1.2+Math.random()*3.5;
+  const m=new THREE.Mesh(new THREE.CircleGeometry(sz,14),new THREE.MeshStandardMaterial({color:0,emissive:new THREE.Color().setHSL(...hsl),emissiveIntensity:1.4,roughness:1,depthWrite:false}));
   m.rotation.x=-Math.PI/2;m.position.set(px,.02,pz);scene.add(m);
 }
 
-// ─── ROCKS ────────────────────────────────────────────────────
+// ─── ALIEN ROCK FORMATIONS ────────────────────────────────────
 function mkRockGeo(r){
   const geo=new THREE.IcosahedronGeometry(r,1),pos=geo.attributes.position;
-  for(let i=0;i<pos.count;i++){pos.setX(i,pos.getX(i)+(Math.random()-.5)*r*.38);pos.setY(i,pos.getY(i)+(Math.random()-.5)*r*.38);pos.setZ(i,pos.getZ(i)+(Math.random()-.5)*r*.38);}
+  for(let i=0;i<pos.count;i++){pos.setX(i,pos.getX(i)+(Math.random()-.5)*r*.4);pos.setY(i,pos.getY(i)+(Math.random()-.5)*r*.4);pos.setZ(i,pos.getZ(i)+(Math.random()-.5)*r*.4);}
   geo.computeVertexNormals();return geo;
 }
 const ROCK_SIZES=[2.8,3.5,2.2,1.8,4,2.6,2,3.8,4.5,3,3.5,2,2.5,3];
@@ -345,27 +339,121 @@ for(let i=0;i<14;i++){
   const rx=Math.cos(ang)*rd,rz=Math.sin(ang)*rd;
   const r=ROCK_SIZES[i];
   const b=biomeAt(rx,rz);
-  let texToUse=rockTex,col=0x0a1a12,emi=0x000c08;
-  if(b==='volcanic'){texToUse=lavaTex;col=0x1a0a04;emi=0x1a0500;}
-  else if(b==='sandy'){texToUse=sandTex;col=0x0e1812;}
+  let texToUse=rockTex,col=0x040a10,emi=0x000812;
+  if(b==='volcanic'){texToUse=lavaTex;col=0x180600;emi=0x1a0400;}
+  else if(b==='sandy'){texToUse=sandTex;col=0x0a1218;}
   const m=new THREE.Mesh(mkRockGeo(r),new THREE.MeshStandardMaterial({map:texToUse,color:col,roughness:.95,metalness:.05,emissive:emi,emissiveIntensity:.4}));
   m.position.set(rx,r*.55-.2,rz);m.rotation.y=Math.random()*Math.PI*2;scene.add(m);
 }
 
-// ─── MUSHROOMS ────────────────────────────────────────────────
-function mkCapGeo(r){const pts=[];for(let i=0;i<=18;i++){const t=i/18,a=t*Math.PI*.65;pts.push(new THREE.Vector2(Math.sin(a)*r,Math.cos(a)*r*.7-r*.1));}return new THREE.LatheGeometry(pts,16);}
-const MUSH_CLR=[0x00ffcc,0xff6600,0x44ffaa,0xff44cc,0x00ff88,0xffaa00];
-const mushrooms=[];
-for(let i=0;i<7;i++){
-  const ang=Math.random()*Math.PI*2,rd=15+Math.random()*60;
-  const mx=Math.cos(ang)*rd,mz=Math.sin(ang)*rd;
-  const ms=2.5+Math.random()*2.5,sh=3+Math.random()*5;
-  const col=new THREE.Color(MUSH_CLR[i%6]);
-  const stalkPts=[new THREE.Vector3(0,0,0),new THREE.Vector3(.04*ms,sh*.25,0),new THREE.Vector3(.06*ms,sh*.6,0),new THREE.Vector3(0,sh,0)];
-  const stalk=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(stalkPts),8,.18*ms,6,false),new THREE.MeshStandardMaterial({color:0x001a10,roughness:.9,emissive:col.clone().multiplyScalar(.2),emissiveIntensity:.5}));stalk.position.set(mx,0,mz);scene.add(stalk);
-  const cap=new THREE.Mesh(mkCapGeo(ms*(1.3+Math.random()*.5)),new THREE.MeshStandardMaterial({color:0x000a06,roughness:.6,emissive:col,emissiveIntensity:1.5,side:THREE.DoubleSide}));
-  cap.position.set(mx,sh,mz);scene.add(cap);
-  mushrooms.push({cap,t:Math.random()*Math.PI*2});
+// ─── ALIEN SPIRES ─────────────────────────────────────────────
+for(let i=0;i<9;i++){
+  const ang=Math.random()*Math.PI*2,rd=18+Math.random()*60;
+  const sx=Math.cos(ang)*rd,sz=Math.sin(ang)*rd;
+  const h=14+Math.random()*24,baseR=.7+Math.random()*1.1;
+  const b=biomeAt(sx,sz);
+  const gc=b==='volcanic'?new THREE.Color(1,.3,0):b==='coral'?new THREE.Color(0,.85,.9):new THREE.Color(0,.65,1);
+  const base=terrainH(sx,sz);
+  const segs=4+Math.floor(Math.random()*4);
+  const segH=h/segs;
+  for(let j=0;j<segs;j++){
+    const t=j/segs;
+    const sr=baseR*(1-t*.7);
+    const ox=(Math.random()-.5)*.5,oz=(Math.random()-.5)*.5;
+    const isTop=j===segs-1;
+    const emi=isTop?gc.clone():new THREE.Color(0,.02,.06);
+    const seg=new THREE.Mesh(
+      new THREE.CylinderGeometry(isTop?sr*.2:sr,sr,segH,8),
+      new THREE.MeshStandardMaterial({color:0x020810,roughness:.93,emissive:emi,emissiveIntensity:isTop?3:.4})
+    );
+    seg.position.set(sx+ox,base+segH*.5+j*segH,sz+oz);
+    scene.add(seg);
+  }
+  const tipLight=new THREE.PointLight(gc.getHex(),.9,10);tipLight.position.set(sx,base+h+.5,sz);scene.add(tipLight);
+}
+
+// ─── BLOOD KELP / ALIEN PLANTS ────────────────────────────────
+const alienPlants=[];
+const PLANT_CLR=[0x00ffcc,0xff4400,0x00aaff,0xff8800,0x44ffaa,0xcc00ff,0x00ff88,0xff3366,0x00ccff];
+for(let i=0;i<9;i++){
+  const ang=Math.random()*Math.PI*2,rd=14+Math.random()*65;
+  const px=Math.cos(ang)*rd,pz=Math.sin(ang)*rd;
+  const sh=8+Math.random()*14;
+  const col=new THREE.Color(PLANT_CLR[i%9]);
+  const gy=terrainH(px,pz);
+  // Main stalk — gently curved tube
+  const bend=(Math.random()-.5)*2,bendz=(Math.random()-.5)*2;
+  const stalkPts=[new THREE.Vector3(0,gy,0),new THREE.Vector3(bend*.25,gy+sh*.3,bendz*.25),new THREE.Vector3(bend*.6,gy+sh*.65,bendz*.6),new THREE.Vector3(bend,gy+sh,bendz)];
+  const stalkMat=new THREE.MeshStandardMaterial({color:0x000e08,roughness:.95,emissive:col.clone().multiplyScalar(.12),emissiveIntensity:.8});
+  scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(stalkPts),10,.12+Math.random()*.08,6,false),stalkMat));
+  // Gas pods along stalk
+  const podCount=2+Math.floor(Math.random()*2);
+  for(let j=0;j<podCount;j++){
+    const pt=(j+1)/(podCount+1);
+    const podX=px+bend*pt,podY=gy+sh*pt,podZ=pz+bendz*pt;
+    const podR=.35+Math.random()*.3;
+    const podMat=new THREE.MeshStandardMaterial({color:0x000a06,roughness:.5,emissive:col,emissiveIntensity:1.2,transparent:true,opacity:.85});
+    const pod=new THREE.Mesh(new THREE.SphereGeometry(podR,8,6),podMat);
+    pod.position.set(podX,podY,podZ);scene.add(pod);
+  }
+  // Crown cap
+  const capPts=[];for(let k=0;k<=14;k++){const t=k/14,a=t*Math.PI*.6;capPts.push(new THREE.Vector2(Math.sin(a)*(1.1+Math.random()*.3),Math.cos(a)*.9-.1));}
+  const capSz=1.4+Math.random()*1.2;
+  const capMat=new THREE.MeshStandardMaterial({color:0x000a06,roughness:.55,emissive:col,emissiveIntensity:1.8,side:THREE.DoubleSide,transparent:true,opacity:.9});
+  const cap=new THREE.Mesh(new THREE.LatheGeometry(capPts,16),capMat);
+  cap.scale.setScalar(capSz);
+  cap.position.set(px+bend,gy+sh,pz+bendz);scene.add(cap);
+  alienPlants.push({cap,col,t:Math.random()*Math.PI*2});
+}
+
+// ─── FAN CORALS ───────────────────────────────────────────────
+const CORAL_CLR=[0x00ffcc,0xff3377,0x00ff88,0xff7700,0x44ffff,0xff44bb,0x00ccff,0xffaa00];
+const corals=[];
+for(let i=0;i<8;i++){
+  const ang=Math.random()*Math.PI*2,rd=14+Math.random()*65;
+  const cx=Math.cos(ang)*rd,cz=Math.sin(ang)*rd;
+  const cc=new THREE.Color(CORAL_CLR[i%8]);
+  const gy=terrainH(cx,cz);
+  // Fan shape using lathe profile
+  const fanPts=[];for(let k=0;k<=10;k++){const t=k/10;fanPts.push(new THREE.Vector2(t*1.6,Math.sin(t*Math.PI)*.9));}
+  const fanMat=new THREE.MeshStandardMaterial({color:0x030005,roughness:.6,emissive:cc,emissiveIntensity:1.4,side:THREE.DoubleSide,transparent:true,opacity:.85});
+  const fan=new THREE.Mesh(new THREE.LatheGeometry(fanPts,12),fanMat);
+  fan.position.set(cx,gy,cz);fan.rotation.y=Math.random()*Math.PI*2;fan.rotation.z=(Math.random()-.5)*.3;
+  scene.add(fan);corals.push({m:fan,t:Math.random()*Math.PI*2});
+  // Branch tubes
+  for(let j=0;j<3+Math.floor(Math.random()*3);j++){
+    const h=.9+Math.random()*2.2,r=.04+Math.random()*.08;
+    const bm=new THREE.Mesh(new THREE.CylinderGeometry(r*.2,r,h,5),new THREE.MeshStandardMaterial({color:0x040002,roughness:.8,emissive:cc,emissiveIntensity:1.1}));
+    bm.position.set(cx+(Math.random()-.5)*2.8,gy+h*.5,cz+(Math.random()-.5)*2.8);bm.rotation.z=(Math.random()-.5)*.4;
+    scene.add(bm);corals.push({m:bm,t:Math.random()*Math.PI*2});
+  }
+}
+
+// ─── TUBE WORMS (SUBNAUTICA FLOOR LIFE) ───────────────────────
+const WORM_CLR=[0x00ffcc,0xff4466,0xffaa00,0x44ffff,0x00ff88,0xff66aa];
+for(let i=0;i<18;i++){
+  const ang=Math.random()*Math.PI*2,rd=8+Math.random()*70;
+  const wx=Math.cos(ang)*rd,wz=Math.sin(ang)*rd;
+  const wc=new THREE.Color(WORM_CLR[i%6]);
+  const gy=terrainH(wx,wz);
+  const cluster=2+Math.floor(Math.random()*4);
+  for(let j=0;j<cluster;j++){
+    const h=.5+Math.random()*1.4;
+    const tube=new THREE.Mesh(new THREE.CylinderGeometry(.04,.1,h,6),new THREE.MeshStandardMaterial({color:0x020008,roughness:.8,emissive:wc,emissiveIntensity:1.6}));
+    tube.position.set(wx+(Math.random()-.5)*1.5,gy+h*.5,wz+(Math.random()-.5)*1.5);
+    tube.rotation.z=(Math.random()-.5)*.15;scene.add(tube);
+  }
+}
+
+// ─── GOD RAYS ─────────────────────────────────────────────────
+const rayMat=new THREE.MeshBasicMaterial({color:0x003366,transparent:true,opacity:.028,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending});
+for(let i=0;i<6;i++){
+  const ang=Math.random()*Math.PI*2,rd=Math.random()*50;
+  const rx=Math.cos(ang)*rd,rz=Math.sin(ang)*rd;
+  const rh=28+Math.random()*10;
+  const ray=new THREE.Mesh(new THREE.ConeGeometry(2.5+Math.random()*4,rh,6),rayMat.clone());
+  ray.position.set(rx,14+rh*.5,rz);ray.rotation.z=(Math.random()-.5)*.18;ray.rotation.x=(Math.random()-.5)*.1;
+  scene.add(ray);
 }
 
 // ─── KELP ─────────────────────────────────────────────────────
@@ -375,53 +463,47 @@ for(let i=0;i<6;i++){
   const kx=Math.cos(ang)*rd,kz=Math.sin(ang)*rd;
   const g=new THREE.Group();
   for(let j=0;j<2+Math.floor(Math.random()*2);j++){
-    const h=5+Math.random()*8,ox=(Math.random()-.5)*2.5,oz=(Math.random()-.5)*2.5;
-    const bend=(Math.random()-.5)*.8,bendz=(Math.random()-.5)*.8;
+    const h=6+Math.random()*9,ox=(Math.random()-.5)*2.5,oz=(Math.random()-.5)*2.5;
+    const bend=(Math.random()-.5)*.9,bendz=(Math.random()-.5)*.9;
     const pts=[new THREE.Vector3(ox,0,oz),new THREE.Vector3(ox+bend*.3,h*.3,oz+bendz*.3),new THREE.Vector3(ox+bend*.6,h*.6,oz+bendz*.6),new THREE.Vector3(ox+bend,h,oz+bendz)];
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),10,.03+Math.random()*.03,5,false),new THREE.MeshStandardMaterial({color:0x001a0a,roughness:1,emissive:0x002e10,emissiveIntensity:.7})));
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),10,.025+Math.random()*.025,5,false),new THREE.MeshStandardMaterial({color:0x000e06,roughness:1,emissive:0x002814,emissiveIntensity:.8})));
   }
   g.position.set(kx,0,kz);scene.add(g);kelps.push({g,phase:Math.random()*Math.PI*2});
-}
-
-// ─── CORAL ────────────────────────────────────────────────────
-const CORAL_CLR=[0x00ffcc,0xff3366,0x00ff88,0xff8800,0x44ffff,0xff44aa];
-const corals=[];
-for(let i=0;i<6;i++){
-  const ang=Math.random()*Math.PI*2,rd=15+Math.random()*60;
-  const cx=Math.cos(ang)*rd,cz=Math.sin(ang)*rd;
-  const cc=new THREE.Color(CORAL_CLR[i%6]);
-  for(let j=0;j<3+Math.floor(Math.random()*2);j++){
-    const h=.8+Math.random()*2,r=.06+Math.random()*.1;
-    const m=new THREE.Mesh(new THREE.CylinderGeometry(r*.25,r,h,6),new THREE.MeshStandardMaterial({color:0x070005,roughness:.8,emissive:cc,emissiveIntensity:.9}));
-    m.position.set(cx+(Math.random()-.5)*2.5,h*.5,cz+(Math.random()-.5)*2.5);m.rotation.z=(Math.random()-.5)*.35;scene.add(m);corals.push({m,t:Math.random()*Math.PI*2});
-  }
 }
 
 // ─── WRECKAGE ─────────────────────────────────────────────────
 (()=>{
   [[8,2,4,0,1,0,0],[.4,1.8,2,0,2.4,0,0],[1.5,.5,1,5,.3,1,.4],[1.5,.5,1,3.5,.3,-1,-.3],[2,.4,.8,7,.25,.5,.8],[3,1.2,1.5,-2,.7,0,.2]].forEach(([sx,sy,sz,px,py,pz,ry])=>{
-    const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),new THREE.MeshStandardMaterial({map:metalTex,color:0x1a2830,roughness:.85,metalness:.65,emissive:0x060300,emissiveIntensity:.5}));
+    const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),new THREE.MeshStandardMaterial({map:metalTex,color:0x18242c,roughness:.88,metalness:.7,emissive:0x060300,emissiveIntensity:.5}));
     m.position.set(px,py,pz);m.rotation.y=ry;scene.add(m);
   });
-  const beacon=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),new THREE.MeshStandardMaterial({color:0,emissive:0xff5500,emissiveIntensity:2.5}));
+  const beacon=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),new THREE.MeshStandardMaterial({color:0,emissive:0xff5500,emissiveIntensity:2.8}));
   beacon.position.set(0,2.5,0);scene.add(beacon);
-  for(let i=0;i<8;i++){const d=new THREE.Mesh(new THREE.BoxGeometry(.3+Math.random()*.8,.1+Math.random()*.3,.3+Math.random()*.8),new THREE.MeshStandardMaterial({map:metalTex,color:0x1a2830,roughness:.85,metalness:.65}));d.position.set((Math.random()-.5)*12,.1,(Math.random()-.5)*12);d.rotation.y=Math.random()*Math.PI*2;scene.add(d);}
+  for(let i=0;i<8;i++){const d=new THREE.Mesh(new THREE.BoxGeometry(.3+Math.random()*.8,.1+Math.random()*.3,.3+Math.random()*.8),new THREE.MeshStandardMaterial({map:metalTex,color:0x18242c,roughness:.88,metalness:.7}));d.position.set((Math.random()-.5)*12,.1,(Math.random()-.5)*12);d.rotation.y=Math.random()*Math.PI*2;scene.add(d);}
 })();
 
-// Water ceiling
-const waterCeilMat=new THREE.MeshStandardMaterial({color:0x002a22,transparent:true,opacity:.22,roughness:.05,metalness:.3,emissive:0x001a12,emissiveIntensity:.6,side:THREE.DoubleSide});
+// ─── WATER CEILING ────────────────────────────────────────────
+const waterCeilMat=new THREE.MeshStandardMaterial({color:0x001e2e,transparent:true,opacity:.28,roughness:.04,metalness:.35,emissive:0x001428,emissiveIntensity:.7,side:THREE.DoubleSide});
 const waterCeil=new THREE.Mesh(new THREE.PlaneGeometry(230,230),waterCeilMat);
 waterCeil.rotation.x=-Math.PI/2;waterCeil.position.y=28;scene.add(waterCeil);
 
-// Bubbles
+// ─── PARTICLES ────────────────────────────────────────────────
+// Vent bubbles
 const BCOUNT=120;
 const bArr=new Float32Array(BCOUNT*3),bVRef=[];
 for(let i=0;i<BCOUNT;i++){const v=vents[i%3];bArr[i*3]=v.x+(Math.random()-.5)*.7;bArr[i*3+1]=Math.random()*22;bArr[i*3+2]=v.z+(Math.random()-.5)*.7;bVRef.push(v);}
 const bGeo=new THREE.BufferGeometry();bGeo.setAttribute('position',new THREE.BufferAttribute(bArr,3));
-scene.add(new THREE.Points(bGeo,new THREE.PointsMaterial({color:0x88ffcc,size:.14,transparent:true,opacity:.5,sizeAttenuation:true})));
-const pArr=new Float32Array(300*3);for(let i=0;i<300;i++){pArr[i*3]=(Math.random()-.5)*180;pArr[i*3+1]=Math.random()*30;pArr[i*3+2]=(Math.random()-.5)*180;}
+scene.add(new THREE.Points(bGeo,new THREE.PointsMaterial({color:0x88eeff,size:.13,transparent:true,opacity:.55,sizeAttenuation:true})));
+// Ambient plankton
+const pArr=new Float32Array(400*3);for(let i=0;i<400;i++){pArr[i*3]=(Math.random()-.5)*180;pArr[i*3+1]=Math.random()*28;pArr[i*3+2]=(Math.random()-.5)*180;}
 const pGeo=new THREE.BufferGeometry();pGeo.setAttribute('position',new THREE.BufferAttribute(pArr,3));
-scene.add(new THREE.Points(pGeo,new THREE.PointsMaterial({color:0x004433,size:.08,transparent:true,opacity:.45,sizeAttenuation:true})));
+scene.add(new THREE.Points(pGeo,new THREE.PointsMaterial({color:0x003355,size:.06,transparent:true,opacity:.4,sizeAttenuation:true})));
+// Spores — drifting cyan motes
+const SPORE_CNT=280;
+const sporeArr=new Float32Array(SPORE_CNT*3);
+for(let i=0;i<SPORE_CNT;i++){sporeArr[i*3]=(Math.random()-.5)*170;sporeArr[i*3+1]=.5+Math.random()*20;sporeArr[i*3+2]=(Math.random()-.5)*170;}
+const sporeGeo=new THREE.BufferGeometry();sporeGeo.setAttribute('position',new THREE.BufferAttribute(sporeArr,3));
+scene.add(new THREE.Points(sporeGeo,new THREE.PointsMaterial({color:0x00ffcc,size:.2,transparent:true,opacity:.55,sizeAttenuation:true})));
 
 // ─── PICKUPS ──────────────────────────────────────────────────
 const CORE_POS=[[-30,-26],[36,-42],[-52,22],[26,52],[-18,-62]];
@@ -441,9 +523,7 @@ CELL_POS.forEach(([x,z])=>pickups.push(mkPickup(x,z,'cell')));
 SHIELD_POS.forEach(([x,z])=>pickups.push(mkPickup(x,z,'shield')));
 
 // ─── GROUND PHYSICS ───────────────────────────────────────────
-// Sample terrain height analytically — same noise function that built the mesh,
-// eliminates per-frame raycasting against 16 000+ triangles entirely.
-function sampleTerrainY(x,z){ return terrainH(x,z); }
+function sampleTerrainY(x,z){return terrainH(x,z);}
 
 // ─── TORPEDO SYSTEM ───────────────────────────────────────────
 const WEAPON={ammo:12,maxAmmo:12,recharge:0,cooldown:0};
@@ -464,7 +544,6 @@ function fireTorpedo(){
   scene.add(mesh);scene.add(light);
   torpedoes.push({mesh,light,pos:pos.clone(),dir:dir.clone(),life:2.4,speed:30});
 }
-
 function spawnDeathFlash(x,y,z,col){
   const m=new THREE.Mesh(new THREE.SphereGeometry(.5,6,6),new THREE.MeshStandardMaterial({color:0,emissive:col,emissiveIntensity:4,transparent:true,opacity:1,depthWrite:false}));
   m.position.set(x,y,z);scene.add(m);deathFlashes.push({m,t:0});
@@ -472,110 +551,132 @@ function spawnDeathFlash(x,y,z,col){
 
 // ─── CREATURE FACTORIES ───────────────────────────────────────
 let lurkers=[],phantoms=[],crushers=[],swarmlings=[];
-
-function cloneModel(gltf){
-  if(typeof THREE.SkeletonUtils!=='undefined')return THREE.SkeletonUtils.clone(gltf.scene);
-  return gltf.scene.clone(true);
-}
+function cloneModel(gltf){if(typeof THREE.SkeletonUtils!=='undefined')return THREE.SkeletonUtils.clone(gltf.scene);return gltf.scene.clone(true);}
 function normalizeModel(obj,sz){
-  const box=new THREE.Box3().setFromObject(obj);
-  const s=new THREE.Vector3();box.getSize(s);
+  const box=new THREE.Box3().setFromObject(obj);const s=new THREE.Vector3();box.getSize(s);
   const maxH=Math.max(s.x,s.z);if(maxH<.001)return;
   obj.scale.setScalar(sz/maxH);
-  const box2=new THREE.Box3().setFromObject(obj);
-  obj.position.sub(box2.getCenter(new THREE.Vector3()));
+  const box2=new THREE.Box3().setFromObject(obj);obj.position.sub(box2.getCenter(new THREE.Vector3()));
 }
 
-// Lurker — dark predator fish (GLTF)
+// Lurker — deep predator fish, menacing Subnautica style
 const LURK_STARTS=[[-42,-32],[42,32],[-32,42],[32,-42],[-62,0],[62,0],[0,-62],[0,62]];
 function mkLurker(x,z,gltf){
   const g=new THREE.Group();let mixer=null;
   if(gltf){
     const model=cloneModel(gltf);
-    const mat=new THREE.MeshStandardMaterial({color:0x030008,roughness:.88,metalness:.2,emissive:0x0d0018,emissiveIntensity:.7});
+    // Deep purple-black body with subtle teal bio-glow edge
+    const mat=new THREE.MeshStandardMaterial({color:0x020008,roughness:.7,metalness:.25,emissive:0x060028,emissiveIntensity:.9});
     model.traverse(c=>{if(c.isMesh){c.material=mat;c.castShadow=false;}});
-    normalizeModel(model,2.8);g.add(model);
+    normalizeModel(model,2.6);g.add(model);
     if(gltf.animations&&gltf.animations.length){mixer=new THREE.AnimationMixer(model);mixer.clipAction(gltf.animations[0]).play();}
   }else{
-    // CapsuleGeometry not in r128 — build from cylinder + two capped spheres
-    const bm=new THREE.MeshStandardMaterial({color:0x060012,roughness:.85,emissive:0x120018,emissiveIntensity:.7});
-    const cyl=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,1.2,10),bm);cyl.rotation.x=Math.PI/2;g.add(cyl);
-    const s1=new THREE.Mesh(new THREE.SphereGeometry(.35,10,6),bm);s1.position.z=.6;g.add(s1);
-    const s2=new THREE.Mesh(new THREE.SphereGeometry(.35,10,6),bm);s2.position.z=-.6;g.add(s2);
+    const bm=new THREE.MeshStandardMaterial({color:0x030008,roughness:.75,emissive:0x08002a,emissiveIntensity:.9});
+    const body=new THREE.Mesh(new THREE.SphereGeometry(.45,10,7),bm);body.scale.set(.7,.5,2.5);g.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.38,10,7),bm);head.position.z=-1.1;head.scale.set(.85,.75,.85);g.add(head);
+    const fMat=new THREE.MeshStandardMaterial({color:0,emissive:0x0044cc,emissiveIntensity:2,transparent:true,opacity:.6,side:THREE.DoubleSide});
+    const tailFin=new THREE.Mesh(new THREE.ConeGeometry(.3,.55,4),fMat);tailFin.rotation.x=Math.PI*.5;tailFin.position.z=1.1;g.add(tailFin);
+    const dorsal=new THREE.Mesh(new THREE.ConeGeometry(.15,.4,3),fMat);dorsal.position.set(0,.4,0);g.add(dorsal);
   }
-  const lureMat=new THREE.MeshStandardMaterial({color:0,emissive:0x00ffaa,emissiveIntensity:4.5});
-  const lureMesh=new THREE.Mesh(new THREE.SphereGeometry(.13,8,8),lureMat);lureMesh.position.set(0,.5,1.5);g.add(lureMesh);
-  const eyeLight=new THREE.PointLight(0xff1100,0,5);eyeLight.position.set(0,.1,1.2);g.add(eyeLight);
+  // Anglerfish-style bioluminescent lure
+  const lureMat=new THREE.MeshStandardMaterial({color:0,emissive:0x00ffcc,emissiveIntensity:5.5});
+  const lureMesh=new THREE.Mesh(new THREE.SphereGeometry(.12,8,8),lureMat);lureMesh.position.set(0,.6,1.5);g.add(lureMesh);
+  // Predator eyes — red
+  const eyeMat=new THREE.MeshStandardMaterial({color:0,emissive:0xff1100,emissiveIntensity:6});
+  [-0.15,.15].forEach(ex=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.08,6,6),eyeMat);e.position.set(ex,.12,-1.1);g.add(e);});
+  const eyeLight=new THREE.PointLight(0xff1100,0,6);eyeLight.position.set(0,.12,1.2);g.add(eyeLight);
   const sy=sampleTerrainY(x,z)+CREATURE_HOVER;
   g.position.set(x,sy,z);scene.add(g);
   return{g,eyeLight,lureMat,mixer,x,z,y:sy,minY:sy,hp:3,vx:0,vz:0,state:'patrol',pa:Math.random()*Math.PI*2,atkcd:0,bodyT:0,terrainT:Math.random()*.8,dead:false};
 }
 
-// Phantom — ghost fish (GLTF, translucent)
+// Phantom — bioluminescent jellyfish (fully procedural, Subnautica style)
 const PHNT_STARTS=[[-22,-42],[22,42],[-52,-52],[52,52],[-16,32],[16,-32],[-66,22],[66,-22],[-36,66],[36,-66]];
-function mkPhantom(x,z,gltf){
-  const g=new THREE.Group();const mats=[];let mixer=null;
-  if(gltf){
-    const model=cloneModel(gltf);
-    model.traverse(c=>{
-      if(!c.isMesh)return;
-      const mat=new THREE.MeshStandardMaterial({color:0x000833,roughness:.15,emissive:new THREE.Color(0x003acc),emissiveIntensity:1.4,transparent:true,opacity:.4,side:THREE.DoubleSide,depthWrite:false});
-      c.material=mat;mats.push(mat);
-    });
-    normalizeModel(model,1.6);g.add(model);
-    if(gltf.animations&&gltf.animations.length){mixer=new THREE.AnimationMixer(model);mixer.clipAction(gltf.animations[0]).play();}
-  }else{const bm=new THREE.MeshStandardMaterial({color:0x001133,roughness:.25,emissive:0x0055cc,emissiveIntensity:1,transparent:true,opacity:.4,side:THREE.DoubleSide,depthWrite:false});g.add(new THREE.Mesh(new THREE.SphereGeometry(.6,12,8),bm));mats.push(bm);}
-  const iMat=new THREE.MeshStandardMaterial({color:0,emissive:0x00ccff,emissiveIntensity:2.8,transparent:true,opacity:.5,depthWrite:false});
-  g.add(new THREE.Mesh(new THREE.SphereGeometry(.22,10,8),iMat));mats.push(iMat);
-  const sy=sampleTerrainY(x,z)+CREATURE_HOVER+2+Math.random()*3;
+function mkPhantom(x,z){
+  const g=new THREE.Group();const mats=[];
+  // Bell dome — lathe profile
+  const bellPts=[];
+  for(let i=0;i<=14;i++){const t=i/14,a=t*Math.PI*.68;bellPts.push(new THREE.Vector2(Math.sin(a)*1.25,Math.cos(a)*1.5-.55));}
+  const bellMat=new THREE.MeshStandardMaterial({color:0x001840,roughness:.08,metalness:.1,emissive:0x0044cc,emissiveIntensity:1.3,transparent:true,opacity:.32,side:THREE.DoubleSide,depthWrite:false});
+  g.add(new THREE.Mesh(new THREE.LatheGeometry(bellPts,18),bellMat));mats.push(bellMat);
+  // Inner glow layer
+  const innerMat=new THREE.MeshStandardMaterial({color:0,emissive:0x00aaff,emissiveIntensity:3,transparent:true,opacity:.2,side:THREE.BackSide,depthWrite:false});
+  const innerBell=new THREE.Mesh(new THREE.LatheGeometry(bellPts,18),innerMat);innerBell.scale.setScalar(.82);g.add(innerBell);mats.push(innerMat);
+  // Core glow sphere
+  const coreMat=new THREE.MeshStandardMaterial({color:0,emissive:0x88ddff,emissiveIntensity:5,transparent:true,opacity:.85,depthWrite:false});
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),coreMat));mats.push(coreMat);
+  // Trailing tentacles — curved tubes
+  for(let i=0;i<8;i++){
+    const a=i/8*Math.PI*2;const r=.75+Math.random()*.25;const len=3+Math.random()*4.5;
+    const hue=.55+Math.random()*.1;
+    const pts=[
+      new THREE.Vector3(Math.cos(a)*r,-.5,Math.sin(a)*r),
+      new THREE.Vector3(Math.cos(a)*r*(1+(Math.random()-.5)*.6),-(len*.38),Math.sin(a)*r*(1+(Math.random()-.5)*.6)),
+      new THREE.Vector3(Math.cos(a)*(r*.45),-(len*.7),Math.sin(a)*(r*.45)),
+      new THREE.Vector3(Math.cos(a)*(r*.15),-len,Math.sin(a)*(r*.15))
+    ];
+    const tMat=new THREE.MeshStandardMaterial({color:0,emissive:new THREE.Color().setHSL(hue,.9,.5),emissiveIntensity:1.9,transparent:true,opacity:.5+Math.random()*.22,depthWrite:false});
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),8,.014+Math.random()*.016,4,false),tMat));mats.push(tMat);
+  }
+  // Point light
+  const jLight=new THREE.PointLight(0x0088ff,.7,7);jLight.position.set(0,0,0);g.add(jLight);
+  const sy=sampleTerrainY(x,z)+CREATURE_HOVER+3+Math.random()*3;
   g.position.set(x,sy,z);scene.add(g);
-  return{g,mats,mixer,x,y:sy,minY:sy-3,z,hp:2,vx:0,vz:0,state:'patrol',pa:Math.random()*Math.PI*2,atkcd:0,pulseT:0,terrainT:Math.random()*.8,dead:false};
+  return{g,mats,jLight,mixer:null,x,y:sy,minY:sy-3,z,hp:2,vx:0,vz:0,state:'patrol',pa:Math.random()*Math.PI*2,atkcd:0,pulseT:0,terrainT:Math.random()*.8,dead:false};
 }
 
-// Crusher — heavy crab-like tank
+// Crusher — alien leviathan predator
 const CRUSH_STARTS=[[-55,-55],[55,55],[-55,55],[55,-55]];
 function mkCrusher(x,z){
   const g=new THREE.Group();
-  const mat=new THREE.MeshStandardMaterial({map:metalTex,color:0x0e0804,roughness:.9,metalness:.3,emissive:0x1a0400,emissiveIntensity:.5});
-  // body
-  g.add(new THREE.Mesh(new THREE.BoxGeometry(3.2,.9,2.2),mat));
-  // carapace dome
-  const dome=new THREE.Mesh(new THREE.SphereGeometry(1.4,8,6,0,Math.PI*2,0,Math.PI*.5),mat);dome.position.set(0,.45,0);dome.scale.set(1,.6,1);g.add(dome);
-  // claws
-  [-1.8,1.8].forEach(sx=>{
-    const arm=new THREE.Group();
-    arm.add(new THREE.Mesh(new THREE.BoxGeometry(.3,.25,1.6),mat));
-    const tip=new THREE.Mesh(new THREE.BoxGeometry(.6,.2,.4),mat);tip.position.set(0,0,.95);arm.add(tip);
-    arm.position.set(sx,.1,.4);arm.rotation.y=sx>0?-.25:.25;g.add(arm);
+  const bodyMat=new THREE.MeshStandardMaterial({color:0x030012,roughness:.82,metalness:.15,emissive:0x18002a,emissiveIntensity:.65});
+  // Elongated head + body
+  const body=new THREE.Mesh(new THREE.SphereGeometry(1.1,12,8),bodyMat);body.scale.set(1,.72,2.4);g.add(body);
+  // Lower jaw
+  const jawMat=new THREE.MeshStandardMaterial({color:0x060018,roughness:.88,metalness:.1,emissive:0x2a0044,emissiveIntensity:.5});
+  [-.45,.45].forEach(ox=>{
+    const jaw=new THREE.Mesh(new THREE.BoxGeometry(.35,.2,1.6),jawMat);
+    jaw.position.set(ox,-.52,-1.8);jaw.rotation.z=ox>0?.18:-.18;g.add(jaw);
   });
-  // legs
-  for(let i=0;i<6;i++){
-    const lx=(i%2===0?-1.6:1.6),lz=(i<2?-.5:i<4?.5:0);
-    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.07,.1,.8,4),mat);
-    leg.position.set(lx,-.45,lz);leg.rotation.z=lx>0?.5:-.5;g.add(leg);
+  // Dorsal fin-spines
+  const spineMat=new THREE.MeshStandardMaterial({color:0,emissive:0xaa00ff,emissiveIntensity:2.5,transparent:true,opacity:.75,side:THREE.DoubleSide});
+  for(let i=0;i<7;i++){
+    const sh=.7+Math.random()*.9;
+    const spine=new THREE.Mesh(new THREE.ConeGeometry(.07,sh,4),spineMat);
+    spine.position.set((Math.random()-.5)*.55,.62+Math.random()*.15,(Math.random()-.5)*1.8);spine.rotation.z=(Math.random()-.5)*.35;
+    g.add(spine);
   }
-  // eyes
-  const eMat=new THREE.MeshStandardMaterial({color:0,emissive:0xff4400,emissiveIntensity:4});
-  [-0.5,.5].forEach(ex=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.18,6,6),eMat);e.position.set(ex,.5,-1.05);g.add(e);});
-  const eyeLight=new THREE.PointLight(0xff3300,0,8);eyeLight.position.set(0,.5,-1.1);g.add(eyeLight);
-  const sy=sampleTerrainY(x,z)+.5;
+  // Side fin panels
+  [-1.2,1.2].forEach(sx=>{
+    const finPts=[];for(let k=0;k<=8;k++){const t=k/8;finPts.push(new THREE.Vector2(t*1.3,Math.sin(t*Math.PI)*.55));}
+    const fin=new THREE.Mesh(new THREE.LatheGeometry(finPts,8),new THREE.MeshStandardMaterial({color:0,emissive:0x660088,emissiveIntensity:1.5,transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false}));
+    fin.rotation.z=sx>0?Math.PI*.5:-Math.PI*.5;fin.rotation.y=Math.PI*.5;fin.position.set(sx,0,0);g.add(fin);
+  });
+  // Eyes
+  const eMat=new THREE.MeshStandardMaterial({color:0,emissive:0xff2200,emissiveIntensity:6});
+  [-0.35,.35].forEach(ex=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.18,6,6),eMat);e.position.set(ex,.12,-1.1);g.add(e);});
+  const eyeLight=new THREE.PointLight(0xff2200,0,10);eyeLight.position.set(0,.12,-1.1);g.add(eyeLight);
+  const sy=sampleTerrainY(x,z)+.9;
   g.position.set(x,sy,z);scene.add(g);
   return{g,eyeLight,x,z,y:sy,minY:sy,hp:CRUSHER_HP,vx:0,vz:0,pa:Math.random()*Math.PI*2,atkcd:0,bodyT:0,terrainT:Math.random()*.8,dead:false};
 }
 
-// Swarmling — tiny fast electric creature
+// Swarmling — bladefin, sleek electric dart fish
 const SWARM_STARTS=[[-35,-15],[35,15],[-15,35],[15,-35],[-48,8],[48,-8],[-8,48],[8,-48],[28,28],[-28,-28],[-38,38],[38,-38],[20,-55],[-20,55],[50,20]];
 function mkSwarmling(x,z){
   const g=new THREE.Group();
-  const mat=new THREE.MeshStandardMaterial({color:0x000520,roughness:.4,metalness:.1,emissive:0x0044ff,emissiveIntensity:2.5,transparent:true,opacity:.85});
-  const body=new THREE.Mesh(new THREE.SphereGeometry(.22,7,5),mat);
-  body.scale.z=1.8;g.add(body);
-  const tMat=new THREE.MeshStandardMaterial({color:0,emissive:0x3366ff,emissiveIntensity:2,transparent:true,opacity:.5,side:THREE.DoubleSide});
-  const tail=new THREE.Mesh(new THREE.ConeGeometry(.18,.45,4),tMat);
-  tail.rotation.x=Math.PI/2;tail.position.z=.38;g.add(tail);
-  // electric spark glow
-  const spark=new THREE.PointLight(0x2244ff,0,4);spark.position.z=-.15;g.add(spark);
-  const sy=sampleTerrainY(x,z)+CREATURE_HOVER*.7;
+  const bodyMat=new THREE.MeshStandardMaterial({color:0x00040e,roughness:.3,metalness:.2,emissive:0x0055ee,emissiveIntensity:2.5,transparent:true,opacity:.92});
+  // Aerodynamic body
+  const body=new THREE.Mesh(new THREE.SphereGeometry(.18,8,6),bodyMat);body.scale.set(.65,.45,2.4);g.add(body);
+  const finMat=new THREE.MeshStandardMaterial({color:0,emissive:0x00ccff,emissiveIntensity:3.5,transparent:true,opacity:.65,side:THREE.DoubleSide,depthWrite:false});
+  // Dorsal blade fin
+  const dorsal=new THREE.Mesh(new THREE.ConeGeometry(.14,.48,3),finMat);dorsal.rotation.z=Math.PI;dorsal.position.set(0,.22,-.05);g.add(dorsal);
+  // Side pectoral fins
+  [-1,1].forEach(sx=>{const sf=new THREE.Mesh(new THREE.ConeGeometry(.09,.32,3),finMat);sf.rotation.z=sx*Math.PI*.5+Math.PI*.5;sf.position.set(sx*.2,0,.1);g.add(sf);});
+  // Crescent tail
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(.1,.35,4),finMat);tail.rotation.x=Math.PI*.5;tail.position.z=.42;g.add(tail);
+  const spark=new THREE.PointLight(0x0044ff,0,5);spark.position.z=.2;g.add(spark);
+  const sy=sampleTerrainY(x,z)+CREATURE_HOVER*.6;
   g.position.set(x,sy,z);scene.add(g);
   return{g,spark,x,z,y:sy,minY:sy,hp:1,vx:0,vz:0,pa:Math.random()*Math.PI*2,atkcd:0,bodyT:0,terrainT:Math.random()*.6,dead:false};
 }
@@ -637,7 +738,7 @@ function updFlash(){document.getElementById('flashDisplay').className=P.flashOn?
 let iPvis=false;
 function updIPrompt(){let show=false;for(const p of pickups){if(!p.collected&&Math.hypot(P.pos.x-p.x,P.pos.z-p.z)<3.5){show=true;break;}}if(!show&&P.cores>=5&&Math.hypot(P.pos.x,P.pos.z)<8)show=true;if(show!==iPvis){document.getElementById('iPrompt').style.opacity=show?1:0;iPvis=show;}}
 let lastBiome='';
-function updBiome(){const b=biomeAt(P.pos.x,P.pos.z);if(b!==lastBiome){lastBiome=b;const el=document.getElementById('biomeLabel');el.textContent=BIOME_NAMES[b];el.style.color=b==='volcanic'?'#3a0a00':b==='coral'?'#003322':b==='sandy'?'#1a2a18':'#002a1e';}}
+function updBiome(){const b=biomeAt(P.pos.x,P.pos.z);if(b!==lastBiome){lastBiome=b;const el=document.getElementById('biomeLabel');el.textContent=BIOME_NAMES[b];el.style.color=b==='volcanic'?'#3a0a00':b==='coral'?'#003344':b==='sandy'?'#182235':'#001a2e';}}
 
 // ─── END ──────────────────────────────────────────────────────
 function endGame(win){
@@ -651,29 +752,17 @@ function flashDmg(){const el=document.getElementById('dmgFlash');el.style.opacit
 // ─── TORPEDO UPDATE ───────────────────────────────────────────
 function updTorpedoes(dt){
   for(let i=torpedoes.length-1;i>=0;i--){
-    const t=torpedoes[i];
-    t.life-=dt;
+    const t=torpedoes[i];t.life-=dt;
     if(t.life<=0){scene.remove(t.mesh);scene.remove(t.light);torpedoes.splice(i,1);continue;}
     t.pos.addScaledVector(t.dir,t.speed*dt);
     t.mesh.position.copy(t.pos);t.light.position.copy(t.pos);
-    // hit detection vs all enemies
     let hit=false;
-    const checkHit=(arr,dmg)=>{
-      for(const e of arr){
-        if(e.dead)continue;
-        if(t.pos.distanceTo(e.g.position)<1.5){
-          e.hp-=1;sfxHit();
-          if(e.hp<=0){killEnemy(e,dmg);}
-          hit=true;break;
-        }
-      }
-    };
-    checkHit(lurkers,1);if(!hit)checkHit(phantoms,1);if(!hit)checkHit(crushers,1);if(!hit)checkHit(swarmlings,1);
+    const checkHit=(arr)=>{for(const e of arr){if(e.dead)continue;if(t.pos.distanceTo(e.g.position)<1.5){e.hp-=1;sfxHit();if(e.hp<=0)killEnemy(e);hit=true;break;}}};
+    checkHit(lurkers);if(!hit)checkHit(phantoms);if(!hit)checkHit(crushers);if(!hit)checkHit(swarmlings);
     if(hit){scene.remove(t.mesh);scene.remove(t.light);torpedoes.splice(i,1);}
   }
 }
-
-function killEnemy(e,_dmg){
+function killEnemy(e){
   e.dead=true;sfxKill();
   spawnDeathFlash(e.g.position.x,e.g.position.y,e.g.position.z,0x00ffaa);
   scene.remove(e.g);
@@ -685,10 +774,10 @@ function updLurker(l,dt){
   if(l.dead)return;
   const dx=P.pos.x-l.x,dz=P.pos.z-l.z,dist=Math.sqrt(dx*dx+dz*dz);
   const range=P.flashOn?LURK_RANGE_LIT:LURK_RANGE_DRK;
-  if(l.state==='patrol'){l.pa+=.25*dt;l.vx=Math.cos(l.pa)*.6*dt;l.vz=Math.sin(l.pa)*.6*dt;if(dist<range){l.state='hunt';l.eyeLight.intensity=2;l.lureMat.emissiveIntensity=5;sfxAlert();}}
+  if(l.state==='patrol'){l.pa+=.25*dt;l.vx=Math.cos(l.pa)*.6*dt;l.vz=Math.sin(l.pa)*.6*dt;if(dist<range){l.state='hunt';l.eyeLight.intensity=2;l.lureMat.emissiveIntensity=6;sfxAlert();}}
   else{
     const spd=LURK_SPD*dt,ang=Math.atan2(dx,dz);l.vx=Math.sin(ang)*spd;l.vz=Math.cos(ang)*spd;
-    if(dist>range*1.6&&!beaconOn){l.state='patrol';l.eyeLight.intensity=0;l.lureMat.emissiveIntensity=4;}
+    if(dist>range*1.6&&!beaconOn){l.state='patrol';l.eyeLight.intensity=0;l.lureMat.emissiveIntensity=5.5;}
     if(dist<ATK_DIST&&l.atkcd<=0){if(!P.shield){P.health=Math.max(0,P.health-12);flashDmg();sfxDamage();}l.atkcd=ATK_CD;}
   }
   l.atkcd=Math.max(0,l.atkcd-dt);
@@ -703,8 +792,8 @@ function updLurker(l,dt){
 function updPhantom(ph,dt){
   if(ph.dead)return;
   const dx=P.pos.x-ph.x,dz=P.pos.z-ph.z,dist=Math.sqrt(dx*dx+dz*dz);
-  const tgtO=P.flashOn?.06:.5;
-  for(const mat of ph.mats){mat.opacity+=(tgtO-mat.opacity)*.08;}
+  const tgtO=P.flashOn?.06:.42;
+  for(const mat of ph.mats){if(mat.opacity!==undefined)mat.opacity+=(tgtO-mat.opacity)*.08;}
   if(!beaconOn){
     if(P.flashOn&&dist<PHNT_RANGE_LIT)ph.state='flee';
     else if(!P.flashOn&&dist<PHNT_RANGE_DRK)ph.state='hunt';
@@ -718,10 +807,12 @@ function updPhantom(ph,dt){
   ph.atkcd=Math.max(0,ph.atkcd-dt);
   ph.x=Math.max(-88,Math.min(88,ph.x+ph.vx));ph.z=Math.max(-88,Math.min(88,ph.z+ph.vz));
   ph.terrainT-=dt;if(ph.terrainT<=0){ph.terrainT=.8;ph.minY=sampleTerrainY(ph.x,ph.z)+CREATURE_HOVER+1;}
-  ph.y=Math.max(ph.minY,Math.min(9,ph.y+Math.sin(Date.now()*.0011+ph.pa)*.022));
-  ph.pulseT+=dt*1.8;const pulse=1+Math.sin(ph.pulseT)*.1;ph.g.scale.set(pulse,1/pulse,pulse);
-  ph.g.position.set(ph.x,ph.y,ph.z);ph.g.rotation.y+=dt*.4;
-  if(ph.mixer&&dist<40)ph.mixer.update(dt);
+  ph.y=Math.max(ph.minY,Math.min(10,ph.y+Math.sin(Date.now()*.0011+ph.pa)*.022));
+  // Jellyfish bell pulse
+  ph.pulseT+=dt*1.6;const pulse=1+Math.sin(ph.pulseT)*.12;ph.g.scale.set(pulse,1/pulse,pulse);
+  ph.g.position.set(ph.x,ph.y,ph.z);ph.g.rotation.y+=dt*.25;
+  // Pulse light
+  if(ph.jLight)ph.jLight.intensity=.5+Math.sin(ph.pulseT*2)*.3;
 }
 function updCrusher(cr,dt){
   if(cr.dead)return;
@@ -729,7 +820,7 @@ function updCrusher(cr,dt){
   if(dist<CRUSHER_RANGE){
     const ang=Math.atan2(dx,dz),spd=CRUSHER_SPD*dt;
     cr.vx=Math.sin(ang)*spd;cr.vz=Math.cos(ang)*spd;
-    cr.eyeLight.intensity=Math.min(3,cr.eyeLight.intensity+dt*2);
+    cr.eyeLight.intensity=Math.min(3.5,cr.eyeLight.intensity+dt*2);
     if(dist<ATK_DIST*1.3&&cr.atkcd<=0){if(!P.shield){P.health=Math.max(0,P.health-CRUSHER_DMG);flashDmg();sfxDamage();}cr.atkcd=2.2;}
   }else{
     cr.pa+=.12*dt;cr.vx=Math.cos(cr.pa)*.3*dt;cr.vz=Math.sin(cr.pa)*.3*dt;
@@ -737,9 +828,11 @@ function updCrusher(cr,dt){
   }
   cr.atkcd=Math.max(0,cr.atkcd-dt);
   cr.x=Math.max(-88,Math.min(88,cr.x+cr.vx));cr.z=Math.max(-88,Math.min(88,cr.z+cr.vz));
-  cr.terrainT-=dt;if(cr.terrainT<=0){cr.terrainT=.9;cr.minY=sampleTerrainY(cr.x,cr.z)+.5;}
+  cr.terrainT-=dt;if(cr.terrainT<=0){cr.terrainT=.9;cr.minY=sampleTerrainY(cr.x,cr.z)+.9;}
   cr.y=cr.minY;
-  cr.bodyT+=dt;cr.g.rotation.y+=Math.atan2(cr.vx,cr.vz)*.05;
+  cr.bodyT+=dt;
+  if(Math.abs(cr.vx)+Math.abs(cr.vz)>.001){const ta=Math.atan2(cr.vx,cr.vz),ca=cr.g.rotation.y,d=((ta-ca+Math.PI*3)%(Math.PI*2))-Math.PI;cr.g.rotation.y+=d*Math.min(1,dt*3);}
+  cr.g.rotation.z=Math.sin(cr.bodyT*.8)*.06;
   cr.g.position.set(cr.x,cr.y,cr.z);
 }
 function updSwarmling(sw,dt){
@@ -749,7 +842,7 @@ function updSwarmling(sw,dt){
   if(dist<SWARM_RANGE){
     sw.vx=Math.sin(ang)*SWARM_SPD*dt+(Math.random()-.5)*.06;
     sw.vz=Math.cos(ang)*SWARM_SPD*dt+(Math.random()-.5)*.06;
-    sw.spark.intensity=.8+Math.sin(Date.now()*.015)*.4;
+    sw.spark.intensity=1+Math.sin(Date.now()*.018)*.5;
     if(dist<ATK_DIST*.8&&sw.atkcd<=0){if(!P.shield){P.health=Math.max(0,P.health-SWARM_DMG);flashDmg();sfxDamage();}sw.atkcd=SWARM_CD;}
   }else{sw.pa+=.35*dt;sw.vx=Math.cos(sw.pa)*.8*dt;sw.vz=Math.sin(sw.pa)*.8*dt;sw.spark.intensity=0;}
   sw.atkcd=Math.max(0,sw.atkcd-dt);
@@ -757,7 +850,7 @@ function updSwarmling(sw,dt){
   sw.terrainT-=dt;if(sw.terrainT<=0){sw.terrainT=.6;sw.minY=sampleTerrainY(sw.x,sw.z)+CREATURE_HOVER*.7;}
   sw.y=Math.max(sw.minY,Math.min(6,sw.y+Math.sin(Date.now()*.003+sw.pa)*.03));
   if(Math.abs(sw.vx)+Math.abs(sw.vz)>.001){const ta=Math.atan2(sw.vx,sw.vz),ca=sw.g.rotation.y,d=((ta-ca+Math.PI*3)%(Math.PI*2))-Math.PI;sw.g.rotation.y+=d*Math.min(1,dt*9);}
-  sw.bodyT+=dt*4;sw.g.rotation.z=Math.sin(sw.bodyT)*.25;
+  sw.bodyT+=dt*4;sw.g.rotation.z=Math.sin(sw.bodyT)*.22;
   sw.g.position.set(sw.x,sw.y,sw.z);
 }
 
@@ -770,17 +863,24 @@ function updBubbles(dt){
 let wreckT=0;
 function updScene(dt,time){
   wreckT+=dt;
-  for(const b of bioLights){b.t+=dt*.8;b.pl.intensity=b.base*(.6+Math.sin(b.t)*.4);}
+  for(const b of bioLights){b.t+=dt*.7;b.pl.intensity=b.base*(.55+Math.sin(b.t)*.45);}
   for(const v of vents){v.pl.intensity=.7+Math.sin(Date.now()*.003)*.3;if(Math.hypot(P.pos.x-v.x,P.pos.z-v.z)<3.5)P.power=Math.min(100,P.power+3.5*dt);}
-  wreckLight.intensity=beaconOn?3+Math.sin(wreckT*9)*2.5:1.5+Math.sin(wreckT*.5)*.4;
-  for(const k of kelps){k.g.rotation.z=Math.sin(time*.55+k.phase)*.07;k.g.rotation.x=Math.sin(time*.38+k.phase+1)*.04;}
-  for(const c of corals){c.m.material.emissiveIntensity=.9*(.65+Math.sin(time*1.2+c.t)*.35);}
+  wreckLight.intensity=beaconOn?3+Math.sin(wreckT*9)*2.5:1.8+Math.sin(wreckT*.5)*.5;
+  for(const k of kelps){k.g.rotation.z=Math.sin(time*.55+k.phase)*.08;k.g.rotation.x=Math.sin(time*.38+k.phase+1)*.04;}
+  for(const c of corals){c.m.material.emissiveIntensity=1.4*(.6+Math.sin(time*1.2+c.t)*.4);}
+  for(const ap of alienPlants){ap.t+=dt*1.1;ap.cap.material.emissiveIntensity=1.8*(.7+Math.sin(ap.t)*.3);}
   for(const p of pickups){if(p.collected)continue;p.t+=dt*1.3;p.mesh.position.y=p.y+Math.sin(p.t)*.22;p.mesh.rotation.y+=dt*1.1;p.light.position.y=p.mesh.position.y;}
-  // death flashes
   for(let i=deathFlashes.length-1;i>=0;i--){const f=deathFlashes[i];f.t+=dt*2.8;f.m.scale.setScalar(1+f.t*4);f.m.material.opacity=Math.max(0,1-f.t);if(f.t>=1){scene.remove(f.m);deathFlashes.splice(i,1);}}
-  // weapon recharge
   WEAPON.cooldown=Math.max(0,WEAPON.cooldown-dt);
   if(WEAPON.ammo<WEAPON.maxAmmo){WEAPON.recharge+=dt;if(WEAPON.recharge>=1.8){WEAPON.recharge=0;WEAPON.ammo++;updAmmo();}}
+  // Spore drift
+  const spa=sporeGeo.attributes.position.array;
+  for(let i=0;i<SPORE_CNT;i++){
+    spa[i*3+1]+=.04+Math.random()*.025;
+    spa[i*3]+=(Math.random()-.5)*.014;spa[i*3+2]+=(Math.random()-.5)*.014;
+    if(spa[i*3+1]>22){spa[i*3+1]=.3+Math.random()*.5;}
+  }
+  sporeGeo.attributes.position.needsUpdate=true;
 }
 let heartT=0;
 function updHeartbeat(dt){if(P.power<20){heartT-=dt;if(heartT<=0){sfxHeart();heartT=1.1;}}}
@@ -794,7 +894,6 @@ function update(dt,time){
   if(moveDir.x||moveDir.z){moveDir.normalize();fwd.set(moveDir.x,0,moveDir.z).applyEuler(new THREE.Euler(0,P.yaw,0));P.pos.x+=fwd.x*MOVE_SPD*dt;P.pos.z+=fwd.z*MOVE_SPD*dt;}
   P.pos.y+=vy*MOVE_SPD*.65*dt;
   P.pos.x=Math.max(-88,Math.min(88,P.pos.x));P.pos.z=Math.max(-88,Math.min(88,P.pos.z));
-  // ground physics — raycast the actual terrain mesh
   const ty=sampleTerrainY(P.pos.x,P.pos.z);
   P.pos.y=Math.max(ty+PLAYER_EYE,Math.min(30,P.pos.y));
   camera.position.copy(P.pos);camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;
@@ -822,12 +921,12 @@ document.getElementById('startBtn').addEventListener('click',()=>{
 document.getElementById('retryBtn').addEventListener('click',()=>location.reload());
 requestAnimationFrame(loop);
 
-// ─── MODEL LOADING → build creatures → show start ─────────────
+// ─── MODEL LOADING ────────────────────────────────────────────
 function setLoad(msg,pct){document.getElementById('loadMsg').textContent=msg;document.getElementById('loadFill').style.width=pct+'%';}
 
 function buildCreatures(gltf){
   lurkers=LURK_STARTS.map(([x,z])=>mkLurker(x,z,gltf));
-  phantoms=PHNT_STARTS.map(([x,z])=>mkPhantom(x,z,gltf));
+  phantoms=PHNT_STARTS.map(([x,z])=>mkPhantom(x,z));
   crushers=CRUSH_STARTS.map(([x,z])=>mkCrusher(x,z));
   swarmlings=SWARM_STARTS.map(([x,z])=>mkSwarmling(x,z));
 }
